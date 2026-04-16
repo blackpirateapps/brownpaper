@@ -1,5 +1,15 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
+val ciReleaseKeystorePath = providers.environmentVariable("CI_RELEASE_KEYSTORE_PATH").orNull
+val ciReleaseStorePassword = providers.environmentVariable("CI_RELEASE_STORE_PASSWORD").orNull
+val ciReleaseKeyAlias = providers.environmentVariable("CI_RELEASE_KEY_ALIAS").orNull
+val ciReleaseKeyPassword = providers.environmentVariable("CI_RELEASE_KEY_PASSWORD").orNull
+val ciReleaseSigningEnabled =
+    !ciReleaseKeystorePath.isNullOrBlank() &&
+        !ciReleaseStorePassword.isNullOrBlank() &&
+        !ciReleaseKeyAlias.isNullOrBlank() &&
+        !ciReleaseKeyPassword.isNullOrBlank()
+
 plugins {
     id("com.android.application")
     id("com.android.legacy-kapt")
@@ -10,6 +20,19 @@ plugins {
 android {
     namespace = "com.blackpirateapps.brownpaper"
     compileSdk = 36
+
+    signingConfigs {
+        if (ciReleaseSigningEnabled) {
+            create("ciRelease") {
+                storeFile = file(checkNotNull(ciReleaseKeystorePath))
+                storePassword = checkNotNull(ciReleaseStorePassword)
+                keyAlias = checkNotNull(ciReleaseKeyAlias)
+                keyPassword = checkNotNull(ciReleaseKeyPassword)
+                enableV1Signing = true
+                enableV2Signing = true
+            }
+        }
+    }
 
     defaultConfig {
         applicationId = "com.blackpirateapps.brownpaper"
@@ -27,6 +50,9 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
+            if (ciReleaseSigningEnabled) {
+                signingConfig = signingConfigs.getByName("ciRelease")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",

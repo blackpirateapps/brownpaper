@@ -43,4 +43,5 @@ BrownPaper is an offline-first Android "read later" app built in Kotlin with Jet
 
 ## CI/build notes
 - GitHub Actions uses `actions/setup-java`, `android-actions/setup-android`, and `gradle/actions/setup-gradle`.
+- The workflow generates an ephemeral release keystore at runtime with `keytool`, exports its credentials through `GITHUB_ENV`, and the app module consumes those environment variables to sign the `release` build.
 - The workflow builds `:app:assembleRelease` and uploads the resulting APK artifact from `app/build/outputs/apk/release`.

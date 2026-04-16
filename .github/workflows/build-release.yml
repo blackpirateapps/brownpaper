@@ -27,6 +27,30 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Generate release keystore
+        run: |
+          KEYSTORE_PATH="$RUNNER_TEMP/brownpaper-release.jks"
+          STORE_PASSWORD="$(openssl rand -hex 16)"
+          KEY_PASSWORD="$(openssl rand -hex 16)"
+          KEY_ALIAS="brownpaper-ci"
+
+          keytool -genkeypair \
+            -keystore "$KEYSTORE_PATH" \
+            -storepass "$STORE_PASSWORD" \
+            -keypass "$KEY_PASSWORD" \
+            -alias "$KEY_ALIAS" \
+            -keyalg RSA \
+            -keysize 4096 \
+            -validity 3650 \
+            -dname "CN=BrownPaper CI, OU=CI, O=BrownPaper, L=Unknown, S=Unknown, C=US"
+
+          {
+            echo "CI_RELEASE_KEYSTORE_PATH=$KEYSTORE_PATH"
+            echo "CI_RELEASE_STORE_PASSWORD=$STORE_PASSWORD"
+            echo "CI_RELEASE_KEY_ALIAS=$KEY_ALIAS"
+            echo "CI_RELEASE_KEY_PASSWORD=$KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -41,4 +65,3 @@ jobs:
           name: brownpaper-release-apk
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
-
