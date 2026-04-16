@@ -81,7 +81,10 @@ fun ArticleListScreen(
             Column {
                 TopAppBar(
                     title = {
-                        Box(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
                             AnimatedVisibility(
                                 visible = !isSearchExpanded,
                                 enter = fadeIn(),

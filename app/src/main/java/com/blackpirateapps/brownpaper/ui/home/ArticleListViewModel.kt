@@ -40,7 +40,8 @@ class ArticleListViewModel @Inject constructor(
     }
 
     private val titleFlow = combine(sourceFlow, sourceIdFlow) { sourceValue, id ->
-        ArticleListSource.entries.firstOrNull { it.routeValue == sourceValue } ?: ArticleListSource.Inbox to id
+        val source = ArticleListSource.entries.firstOrNull { it.routeValue == sourceValue } ?: ArticleListSource.Inbox
+        source to id
     }.flatMapLatest { (source, id) ->
         when (source) {
             ArticleListSource.Folder -> articleRepository.observeFolders().flatMapLatest { folders ->
