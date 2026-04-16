@@ -18,6 +18,7 @@ interface ArticleRepository {
     suspend fun setArchived(articleId: Long, archived: Boolean)
     suspend fun assignTags(articleId: Long, selectedTagIds: Set<Long>, newTagNames: List<String>)
     suspend fun moveToFolder(articleId: Long, folderId: Long?)
+    suspend fun updateVideoPosition(articleId: Long, position: Float)
     suspend fun createFolder(name: String): Long?
     suspend fun deleteArticle(articleId: Long)
 }

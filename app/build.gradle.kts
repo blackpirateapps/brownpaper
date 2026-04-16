@@ -119,6 +119,7 @@ dependencies {
     implementation("net.dankito.readability4j:readability4j:1.0.8")
     implementation("io.coil-kt.coil3:coil-compose:3.3.0")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.3.0")
+    implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:12.1.0")
 
     implementation(composeBom)
     androidTestImplementation(composeBom)

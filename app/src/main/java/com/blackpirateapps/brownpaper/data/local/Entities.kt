@@ -53,6 +53,12 @@ data class ArticleEntity(
     val folderId: Long? = null,
     val extractedTextContent: String,
     val extractedHeroImageUrl: String? = null,
+    @ColumnInfo(defaultValue = "0") val isVideo: Boolean = false,
+    val youtubeVideoId: String? = null,
+    val videoRuntimeText: String? = null,
+    val channelName: String? = null,
+    @ColumnInfo(defaultValue = "0") val viewCount: Long = 0L,
+    @ColumnInfo(defaultValue = "0.0") val videoPositionSeconds: Float = 0f,
 )
 
 @Entity(

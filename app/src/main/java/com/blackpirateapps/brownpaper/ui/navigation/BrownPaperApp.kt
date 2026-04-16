@@ -124,6 +124,13 @@ fun BrownPaperApp(
                     ),
                 ) { entry ->
                     val viewModel: ArticleListViewModel = hiltViewModel(entry)
+                    val routeSource = entry.arguments?.getString("source") ?: ArticleListSource.Inbox.routeValue
+                    val routeSourceId = entry.arguments?.getLong("sourceId") ?: -1L
+                    
+                    LaunchedEffect(routeSource, routeSourceId) {
+                        viewModel.updateSource(routeSource, routeSourceId)
+                    }
+
                     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                     ArticleListScreen(
                         uiState = uiState,
@@ -162,6 +169,7 @@ fun BrownPaperApp(
                         onSaveTags = viewModel::saveTags,
                         onMoveToFolder = viewModel::moveToFolder,
                         onSearchInArticle = viewModel::setSearchQuery,
+                        onUpdateVideoPosition = viewModel::updateVideoPosition,
                         onDeleteArticle = viewModel::deleteArticle,
                         onDeleted = { navController.popBackStack() },
                     )

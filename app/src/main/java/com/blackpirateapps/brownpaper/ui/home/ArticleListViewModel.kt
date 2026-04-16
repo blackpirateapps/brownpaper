@@ -29,17 +29,17 @@ class ArticleListViewModel @Inject constructor(
     articleRepository: ArticleRepository,
 ) : ViewModel() {
 
-    private val sourceFlow = savedStateHandle.getStateFlow("source", ArticleListSource.Inbox.routeValue)
-    private val sourceIdFlow = savedStateHandle.getStateFlow("sourceId", -1L)
+    private val _sourceFlow = MutableStateFlow(savedStateHandle.get<String>("source") ?: ArticleListSource.Inbox.routeValue)
+    private val _sourceIdFlow = MutableStateFlow(savedStateHandle.get<Long>("sourceId") ?: -1L)
 
     private val searchQuery = MutableStateFlow("")
 
-    private val filterFlow = combine(sourceFlow, sourceIdFlow) { sourceValue, id ->
+    private val filterFlow = combine(_sourceFlow, _sourceIdFlow) { sourceValue, id ->
         val source = ArticleListSource.entries.firstOrNull { it.routeValue == sourceValue } ?: ArticleListSource.Inbox
         source.toFilter(id)
     }
 
-    private val titleFlow = combine(sourceFlow, sourceIdFlow) { sourceValue, id ->
+    private val titleFlow = combine(_sourceFlow, _sourceIdFlow) { sourceValue, id ->
         val source = ArticleListSource.entries.firstOrNull { it.routeValue == sourceValue } ?: ArticleListSource.Inbox
         source to id
     }.flatMapLatest { (source, id) ->
@@ -77,12 +77,18 @@ class ArticleListViewModel @Inject constructor(
     fun updateSearchQuery(query: String) {
         searchQuery.value = query
     }
+
+    fun updateSource(sourceValue: String, sourceId: Long) {
+        _sourceFlow.value = sourceValue
+        _sourceIdFlow.value = sourceId
+    }
 }
 
 private fun ArticleListSource.toFilter(sourceId: Long): ArticleListFilter = when (this) {
     ArticleListSource.Inbox -> ArticleListFilter.Inbox
     ArticleListSource.Likes -> ArticleListFilter.Likes
     ArticleListSource.Archived -> ArticleListFilter.Archived
+    ArticleListSource.Videos -> ArticleListFilter.Videos
     ArticleListSource.Folder -> ArticleListFilter.FolderFilter(sourceId)
     ArticleListSource.Tag -> ArticleListFilter.TagFilter(sourceId)
 }

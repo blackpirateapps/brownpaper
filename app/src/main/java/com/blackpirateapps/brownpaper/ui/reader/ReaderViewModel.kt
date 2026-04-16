@@ -132,6 +132,12 @@ class ReaderViewModel @Inject constructor(
         }
     }
 
+    fun updateVideoPosition(positionSeconds: Float) {
+        viewModelScope.launch {
+            articleRepository.updateVideoPosition(articleId, positionSeconds)
+        }
+    }
+
     fun deleteArticle() {
         viewModelScope.launch {
             articleRepository.deleteArticle(articleId)

@@ -92,6 +92,7 @@ fun ReaderScreen(
     onSaveTags: (Set<Long>, List<String>) -> Unit,
     onMoveToFolder: (Long?, String) -> Unit,
     onSearchInArticle: (String) -> Unit,
+    onUpdateVideoPosition: (Float) -> Unit,
     onDeleteArticle: () -> Unit,
     onDeleted: () -> Unit,
 ) {
@@ -311,14 +312,23 @@ fun ReaderScreen(
                 )
             }
         } else {
-            SelectionContainer {
-                ReaderContent(
-                    article = article,
-                    searchQuery = uiState.searchQuery,
-                    preferences = uiState.readerPreferences,
-                    colors = readerColors,
-                    innerPadding = innerPadding,
+            if (article.isVideo && !article.youtubeVideoId.isNullOrBlank()) {
+                com.blackpirateapps.brownpaper.ui.components.YoutubeVideoPlayer(
+                    videoId = article.youtubeVideoId,
+                    startSeconds = article.videoPositionSeconds,
+                    onPositionChanged = onUpdateVideoPosition,
+                    modifier = Modifier.padding(innerPadding)
                 )
+            } else {
+                androidx.compose.foundation.text.selection.SelectionContainer {
+                    ReaderContent(
+                        article = article,
+                        searchQuery = uiState.searchQuery,
+                        preferences = uiState.readerPreferences,
+                        colors = readerColors,
+                        innerPadding = innerPadding,
+                    )
+                }
             }
         }
     }

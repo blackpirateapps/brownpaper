@@ -48,6 +48,9 @@ interface BrownPaperDao {
     @Query("UPDATE articles SET folderId = :folderId WHERE id = :articleId")
     suspend fun moveToFolder(articleId: Long, folderId: Long?)
 
+    @Query("UPDATE articles SET videoPositionSeconds = :position WHERE id = :articleId")
+    suspend fun updateVideoPosition(articleId: Long, position: Float)
+
     @Query("DELETE FROM articles WHERE id = :articleId")
     suspend fun deleteArticle(articleId: Long)
 

@@ -84,6 +84,12 @@ fun BrownPaperDrawerContent(
                 selected = currentSource == ArticleListSource.Archived,
                 onClick = { onSelectSource(ArticleListSource.Archived, null) },
             )
+            DrawerItem(
+                label = "Videos",
+                icon = androidx.compose.material.icons.outlined.OndemandVideo,
+                selected = currentSource == ArticleListSource.Videos,
+                onClick = { onSelectSource(ArticleListSource.Videos, null) },
+            )
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 

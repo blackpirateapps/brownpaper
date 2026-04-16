@@ -19,6 +19,10 @@ data class ArticleSummary(
     val isArchived: Boolean,
     val heroImageUrl: String?,
     val excerpt: String,
+    val isVideo: Boolean,
+    val videoRuntimeText: String?,
+    val channelName: String?,
+    val viewCount: Long,
 )
 
 data class ArticleDetail(
@@ -32,12 +36,19 @@ data class ArticleDetail(
     val bodyText: String,
     val folder: Folder?,
     val tags: List<Tag>,
+    val isVideo: Boolean,
+    val youtubeVideoId: String?,
+    val videoRuntimeText: String?,
+    val channelName: String?,
+    val viewCount: Long,
+    val videoPositionSeconds: Float,
 )
 
 sealed interface ArticleListFilter {
     data object Inbox : ArticleListFilter
     data object Likes : ArticleListFilter
     data object Archived : ArticleListFilter
+    data object Videos : ArticleListFilter
     data class FolderFilter(val folderId: Long) : ArticleListFilter
     data class TagFilter(val tagId: Long) : ArticleListFilter
 }
@@ -46,6 +57,7 @@ enum class ArticleListSource(val routeValue: String, val title: String) {
     Inbox("home", "Home"),
     Likes("likes", "Likes"),
     Archived("archived", "Archived"),
+    Videos("videos", "Videos"),
     Folder("folder", "Folder"),
     Tag("tag", "Tag"),
 }

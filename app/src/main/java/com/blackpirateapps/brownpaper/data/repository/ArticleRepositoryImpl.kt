@@ -49,6 +49,10 @@ class ArticleRepositoryImpl @Inject constructor(
                         .replace('\n', ' ')
                         .trim()
                         .take(220),
+                    isVideo = article.isVideo,
+                    videoRuntimeText = article.videoRuntimeText,
+                    channelName = article.channelName,
+                    viewCount = article.viewCount,
                 )
             }
         }
@@ -67,6 +71,12 @@ class ArticleRepositoryImpl @Inject constructor(
                     bodyText = it.article.extractedTextContent,
                     folder = it.folder?.toDomain(),
                     tags = it.tags.map { tag -> tag.toDomain() },
+                    isVideo = it.article.isVideo,
+                    youtubeVideoId = it.article.youtubeVideoId,
+                    videoRuntimeText = it.article.videoRuntimeText,
+                    channelName = it.article.channelName,
+                    viewCount = it.article.viewCount,
+                    videoPositionSeconds = it.article.videoPositionSeconds,
                 )
             }
         }
@@ -94,6 +104,11 @@ class ArticleRepositoryImpl @Inject constructor(
                     dateAdded = System.currentTimeMillis(),
                     extractedTextContent = parsed.extractedTextContent,
                     extractedHeroImageUrl = parsed.extractedHeroImageUrl,
+                    isVideo = parsed.isVideo,
+                    youtubeVideoId = parsed.youtubeVideoId,
+                    videoRuntimeText = parsed.videoRuntimeText,
+                    channelName = parsed.channelName,
+                    viewCount = parsed.viewCount,
                 ),
             )
 
@@ -158,6 +173,12 @@ class ArticleRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun updateVideoPosition(articleId: Long, position: Float) {
+        withContext(dispatchers.io) {
+            dao.updateVideoPosition(articleId, position)
+        }
+    }
+
     override suspend fun createFolder(name: String): Long? = withContext(dispatchers.io) {
         val normalizedName = name.trim()
         if (normalizedName.isBlank()) {
@@ -202,6 +223,10 @@ class ArticleRepositoryImpl @Inject constructor(
                 clauses += "a.isLiked = 1"
             }
             ArticleListFilter.Archived -> clauses += "a.isArchived = 1"
+            ArticleListFilter.Videos -> {
+                clauses += "a.isArchived = 0"
+                clauses += "a.isVideo = 1"
+            }
             is ArticleListFilter.FolderFilter -> {
                 clauses += "a.isArchived = 0"
                 clauses += "a.folderId = ?"

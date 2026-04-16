@@ -8,6 +8,11 @@ data class ParsedArticle(
     val title: String,
     val extractedTextContent: String,
     val extractedHeroImageUrl: String?,
+    val isVideo: Boolean = false,
+    val youtubeVideoId: String? = null,
+    val videoRuntimeText: String? = null,
+    val channelName: String? = null,
+    val viewCount: Long = 0L,
 )
 
 class JsoupArticleParser @Inject constructor() {
@@ -21,6 +26,30 @@ class JsoupArticleParser @Inject constructor() {
         // Extract metadata BEFORE Readability4J potentially mutates or strips the document
         val fallbackTitle = findTitle(document, url)
         val heroImage = findHeroImage(document)
+
+        val isYouTube = url.contains("youtube.com/watch") || url.contains("youtu.be/")
+        var youtubeVideoId: String? = null
+        var videoRuntimeText: String? = null
+        var channelName: String? = null
+        var viewCount = 0L
+        
+        if (isYouTube) {
+            val html = document.html()
+            
+            youtubeVideoId = """"videoId":"([^"]+)"""".toRegex().find(html)?.groupValues?.get(1) 
+                ?: url.substringAfter("v=").substringBefore("&").takeIf { it.isNotBlank() }
+            
+            val durationSecs = """"lengthSeconds":"(\d+)"""".toRegex().find(html)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
+            if (durationSecs > 0) {
+                videoRuntimeText = String.format("%d:%02d", durationSecs / 60, durationSecs % 60)
+            }
+            
+            viewCount = document.select("meta[itemprop=interactionCount]").attr("content").toLongOrNull()
+                ?: """"viewCount":"(\d+)"""".toRegex().find(html)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
+                
+            channelName = document.select("span[itemprop=author] link[itemprop=name]").attr("content").takeIf { it.isNotBlank() }
+                ?: """"author":"([^"]+)"""".toRegex().find(html)?.groupValues?.get(1)
+        }
 
         val readability4J = Readability4J(url, document)
         val article = readability4J.parse()
@@ -46,6 +75,11 @@ class JsoupArticleParser @Inject constructor() {
             title = title,
             extractedTextContent = bodyText,
             extractedHeroImageUrl = heroImage,
+            isVideo = isYouTube,
+            youtubeVideoId = youtubeVideoId,
+            videoRuntimeText = videoRuntimeText,
+            channelName = channelName,
+            viewCount = viewCount,
         )
     }
 
