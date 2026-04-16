@@ -31,11 +31,12 @@ jobs:
         run: |
           KEYSTORE_PATH="$RUNNER_TEMP/brownpaper-release.jks"
           STORE_PASSWORD="$(openssl rand -hex 16)"
-          KEY_PASSWORD="$(openssl rand -hex 16)"
+          KEY_PASSWORD="$STORE_PASSWORD"
           KEY_ALIAS="brownpaper-ci"
 
           keytool -genkeypair \
             -keystore "$KEYSTORE_PATH" \
+            -storetype PKCS12 \
             -storepass "$STORE_PASSWORD" \
             -keypass "$KEY_PASSWORD" \
             -alias "$KEY_ALIAS" \
