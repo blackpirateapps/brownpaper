@@ -13,9 +13,6 @@ import androidx.room.RoomDatabase
         ArticleTagCrossRef::class,
     ],
     version = 2,
-    autoMigrations = [
-        AutoMigration(from = 1, to = 2)
-    ],
     exportSchema = true,
 )
 abstract class BrownPaperDatabase : RoomDatabase() {

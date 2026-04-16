@@ -12,6 +12,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -112,6 +117,10 @@ fun BrownPaperApp(
                 navController = navController,
                 startDestination = BrownPaperRoutes.listRoute(ArticleListSource.Inbox),
                 modifier = Modifier,
+                enterTransition = { slideInHorizontally(animationSpec = tween(300), initialOffsetX = { it }) + fadeIn(animationSpec = tween(300)) },
+                exitTransition = { slideOutHorizontally(animationSpec = tween(300), targetOffsetX = { -it / 2 }) + fadeOut(animationSpec = tween(300)) },
+                popEnterTransition = { slideInHorizontally(animationSpec = tween(300), initialOffsetX = { -it / 2 }) + fadeIn(animationSpec = tween(300)) },
+                popExitTransition = { slideOutHorizontally(animationSpec = tween(300), targetOffsetX = { it }) + fadeOut(animationSpec = tween(300)) },
             ) {
                 composable(
                     route = BrownPaperRoutes.listTemplate,

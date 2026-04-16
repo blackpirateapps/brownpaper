@@ -53,12 +53,19 @@ fun AddUrlDialog(
             Button(
                 onClick = { onConfirm(url) },
                 enabled = !isSaving,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 24.dp, vertical = 12.dp)
             ) {
                 Text(if (isSaving) "Saving..." else "Save offline")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSaving) {
+            TextButton(
+                onClick = onDismiss, 
+                enabled = !isSaving,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 24.dp, vertical = 12.dp)
+            ) {
                 Text("Cancel")
             }
         },
@@ -124,6 +131,8 @@ fun ManageTagsDialog(
         },
         confirmButton = {
             Button(
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 24.dp, vertical = 12.dp),
                 onClick = {
                     onSave(
                         draftSelection,
@@ -135,7 +144,11 @@ fun ManageTagsDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 24.dp, vertical = 12.dp),
+                onClick = onDismiss
+            ) {
                 Text("Cancel")
             }
         },
@@ -194,12 +207,20 @@ fun MoveToFolderDialog(
             }
         },
         confirmButton = {
-            Button(onClick = { onSave(selectedFolderId, newFolderName) }) {
+            Button(
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 24.dp, vertical = 12.dp),
+                onClick = { onSave(selectedFolderId, newFolderName) }
+            ) {
                 Text("Move")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 24.dp, vertical = 12.dp),
+                onClick = onDismiss
+            ) {
                 Text("Cancel")
             }
         },
@@ -227,12 +248,20 @@ fun SearchInArticleDialog(
             )
         },
         confirmButton = {
-            Button(onClick = { onApply(searchQuery) }) {
+            Button(
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 24.dp, vertical = 12.dp),
+                onClick = { onApply(searchQuery) }
+            ) {
                 Text("Apply")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 24.dp, vertical = 12.dp),
+                onClick = onDismiss
+            ) {
                 Text("Cancel")
             }
         },

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Close
@@ -40,6 +41,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -71,6 +73,9 @@ fun ArticleListScreen(
             focusRequester.requestFocus()
         }
     }
+    
+    val listState = rememberLazyListState()
+    val isFabExpanded by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
 
     Scaffold(
         modifier = Modifier.pointerInput(Unit) {
@@ -165,6 +170,7 @@ fun ArticleListScreen(
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = onAddArticle,
+                expanded = isFabExpanded,
                 text = { Text("Add link") },
                 icon = {
                     Icon(
@@ -172,6 +178,8 @@ fun ArticleListScreen(
                         contentDescription = null,
                     )
                 },
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             )
         },
     ) { innerPadding ->
@@ -182,6 +190,7 @@ fun ArticleListScreen(
             )
         } else {
             LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
@@ -196,6 +205,7 @@ fun ArticleListScreen(
                         article = article,
                         searchQuery = uiState.searchQuery,
                         onClick = { onArticleSelected(article.id) },
+                        modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)
                     )
                 }
             }

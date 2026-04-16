@@ -542,10 +542,10 @@ private fun ReaderPreferences.asFontFamily(): FontFamily = when (fontFamily) {
     ReaderFontFamily.SYSTEM -> FontFamily.Default
     ReaderFontFamily.SERIF -> FontFamily.Serif
     ReaderFontFamily.MONO -> FontFamily.Monospace
-    ReaderFontFamily.MERRIWEATHER -> FontFamily(Font(R.font.merriweather))
-    ReaderFontFamily.LORA -> FontFamily(Font(R.font.lora))
-    ReaderFontFamily.FIRA_SANS -> FontFamily(Font(R.font.firasans))
-    ReaderFontFamily.INTER -> FontFamily(Font(R.font.inter))
+    ReaderFontFamily.MERRIWEATHER -> FontFamily(Font(R.font.merriweather, FontWeight.Normal))
+    ReaderFontFamily.LORA -> FontFamily(Font(R.font.lora, FontWeight.Normal))
+    ReaderFontFamily.FIRA_SANS -> FontFamily(Font(R.font.firasans, FontWeight.Normal))
+    ReaderFontFamily.INTER -> FontFamily(Font(R.font.inter, FontWeight.Normal))
 }
 
 private fun ReaderPreferences.asFontWeight(): FontWeight =
