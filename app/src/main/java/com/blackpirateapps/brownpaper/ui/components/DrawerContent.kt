@@ -43,7 +43,7 @@ fun BrownPaperDrawerContent(
     currentSourceId: Long?,
     tags: List<Tag>,
     folders: List<Folder>,
-    onSelectSource: (ArticleListSource, Long?) -> Unit,
+    onSelectSource: (ArticleListSource?, Long?) -> Unit,
 ) {
     var tagsExpanded by rememberSaveable { mutableStateOf(true) }
     var foldersExpanded by rememberSaveable { mutableStateOf(true) }
