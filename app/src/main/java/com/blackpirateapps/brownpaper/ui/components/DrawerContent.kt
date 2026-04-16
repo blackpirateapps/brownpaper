@@ -17,6 +17,7 @@ import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Label
 import androidx.compose.material.icons.outlined.PlayCircle
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -90,6 +91,12 @@ fun BrownPaperDrawerContent(
                 icon = Icons.Outlined.PlayCircle,
                 selected = currentSource == ArticleListSource.Videos,
                 onClick = { onSelectSource(ArticleListSource.Videos, null) },
+            )
+            DrawerItem(
+                label = "Settings",
+                icon = Icons.Outlined.Settings,
+                selected = false,
+                onClick = { onSelectSource(null, null) },
             )
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))

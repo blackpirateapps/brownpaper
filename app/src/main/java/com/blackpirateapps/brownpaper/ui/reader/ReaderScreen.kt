@@ -19,6 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -205,8 +206,12 @@ fun ReaderScreen(
                         }
                         IconButton(onClick = { onToggleArchived(article.isArchived) }) {
                             Icon(
-                                imageVector = Icons.Outlined.Archive,
-                                contentDescription = "Archive",
+                                imageVector = if (article.isArchived) {
+                                    Icons.Outlined.CheckCircle
+                                } else {
+                                    Icons.Outlined.Archive
+                                },
+                                contentDescription = if (article.isArchived) "Unarchive" else "Archive",
                                 tint = readerColors.content,
                             )
                         }

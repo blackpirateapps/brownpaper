@@ -33,15 +33,22 @@ fun YoutubeVideoPlayer(
     AndroidView(
         factory = { context ->
             YouTubePlayerView(context).apply {
-                lifecycleOwner.lifecycle.addObserver(this)
-                addYouTubePlayerListener(object : AbstractYouTubePlayerListener() {
+                val iFramePlayerOptions = com.pierfrancescosoffritti.androidyoutubeplayer.core.player.options.IFramePlayerOptions.Builder()
+                    .controls(1)
+                    .fullscreen(1)
+                    .build()
+                
+                enableAutomaticInitialization = false
+                initialize(object : AbstractYouTubePlayerListener() {
                     override fun onReady(youTubePlayer: YouTubePlayer) {
                         youTubePlayer.loadVideo(videoId, startSeconds)
                     }
                     override fun onCurrentSecond(youTubePlayer: YouTubePlayer, second: Float) {
                         currentPosition = second
                     }
-                })
+                }, iFramePlayerOptions)
+                
+                lifecycleOwner.lifecycle.addObserver(this)
             }
         },
         modifier = modifier.fillMaxSize()

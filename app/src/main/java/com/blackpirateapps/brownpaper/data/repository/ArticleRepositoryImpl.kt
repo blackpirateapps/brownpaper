@@ -18,6 +18,12 @@ import com.blackpirateapps.brownpaper.domain.model.ArticleSummary
 import com.blackpirateapps.brownpaper.domain.model.Folder
 import com.blackpirateapps.brownpaper.domain.model.Tag
 import com.blackpirateapps.brownpaper.domain.repository.ArticleRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import com.blackpirateapps.brownpaper.data.local.BackupData
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -197,6 +203,31 @@ class ArticleRepositoryImpl @Inject constructor(
     override suspend fun deleteArticle(articleId: Long) {
         withContext(dispatchers.io) {
             dao.deleteArticle(articleId)
+        }
+    }
+
+    override suspend fun exportData(): String = withContext(dispatchers.io) {
+        val data = BackupData(
+            articles = dao.getAllArticles(),
+            folders = dao.getAllFolders(),
+            tags = dao.getAllTags(),
+            tagCrossRefs = dao.getAllTagCrossRefs()
+        )
+        Json.encodeToString(data)
+    }
+
+    override suspend fun importData(jsonData: String) {
+        withContext(dispatchers.io) {
+            val data = Json.decodeFromString<BackupData>(jsonData)
+            
+            dao.deleteAllArticles()
+            dao.deleteAllFolders()
+            dao.deleteAllTags()
+            
+            dao.insertFolders(data.folders)
+            dao.insertTags(data.tags)
+            dao.insertArticles(data.articles)
+            dao.insertTagCrossRefs(data.tagCrossRefs)
         }
     }
 

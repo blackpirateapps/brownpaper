@@ -99,14 +99,20 @@ fun BrownPaperApp(
                     tags = shellUiState.tags,
                     folders = shellUiState.folders,
                     onSelectSource = { source, sourceId ->
-                        navController.navigate(
-                            BrownPaperRoutes.listRoute(source, sourceId ?: -1L),
-                        ) {
-                            popUpTo(navController.graph.startDestinationId) {
-                                saveState = true
+                        if (source == null) {
+                            navController.navigate(BrownPaperRoutes.settingsRoute()) {
+                                launchSingleTop = true
                             }
-                            launchSingleTop = true
-                            restoreState = true
+                        } else {
+                            navController.navigate(
+                                BrownPaperRoutes.listRoute(source, sourceId ?: -1L),
+                            ) {
+                                popUpTo(navController.graph.startDestinationId) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         }
                         coroutineScope.launch { drawerState.close() }
                     },
@@ -181,6 +187,12 @@ fun BrownPaperApp(
                         onUpdateVideoPosition = viewModel::updateVideoPosition,
                         onDeleteArticle = viewModel::deleteArticle,
                         onDeleted = { navController.popBackStack() },
+                    )
+                }
+
+                composable(route = BrownPaperRoutes.settings) {
+                    com.blackpirateapps.brownpaper.ui.settings.SettingsScreen(
+                        onBack = { navController.popBackStack() }
                     )
                 }
             }

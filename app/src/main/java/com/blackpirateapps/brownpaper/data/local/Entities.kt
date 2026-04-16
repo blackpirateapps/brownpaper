@@ -9,11 +9,13 @@ import androidx.room.Junction
 import androidx.room.PrimaryKey
 import androidx.room.Relation
 import androidx.room.Embedded
+import kotlinx.serialization.Serializable
 
 @Entity(
     tableName = "folders",
     indices = [Index(value = ["name"], unique = true)],
 )
+@Serializable
 data class FolderEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     @ColumnInfo(collate = ColumnInfo.NOCASE) val name: String,
@@ -23,6 +25,7 @@ data class FolderEntity(
     tableName = "tags",
     indices = [Index(value = ["name"], unique = true)],
 )
+@Serializable
 data class TagEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     @ColumnInfo(collate = ColumnInfo.NOCASE) val name: String,
@@ -43,6 +46,7 @@ data class TagEntity(
         Index(value = ["folderId"]),
     ],
 )
+@Serializable
 data class ArticleEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,
@@ -80,6 +84,7 @@ data class ArticleEntity(
     ],
     indices = [Index(value = ["tagId"])],
 )
+@Serializable
 data class ArticleTagCrossRef(
     val articleId: Long,
     val tagId: Long,
@@ -109,4 +114,12 @@ data class ArticleWithRelations(
         ),
     )
     val tags: List<TagEntity>,
+)
+
+@Serializable
+data class BackupData(
+    val articles: List<ArticleEntity>,
+    val folders: List<FolderEntity>,
+    val tags: List<TagEntity>,
+    val tagCrossRefs: List<ArticleTagCrossRef>
 )

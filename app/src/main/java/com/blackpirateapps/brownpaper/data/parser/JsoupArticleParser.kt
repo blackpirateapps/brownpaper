@@ -37,7 +37,10 @@ class JsoupArticleParser @Inject constructor() {
             val html = document.html()
             
             youtubeVideoId = """"videoId":"([^"]+)"""".toRegex().find(html)?.groupValues?.get(1) 
-                ?: url.substringAfter("v=").substringBefore("&").takeIf { it.isNotBlank() }
+                ?: url.substringAfter("v=").substringBefore("&")
+                    .takeIf { it.length in 10..12 && it != url }
+                ?: url.substringAfter("youtu.be/").substringBefore("?").substringBefore("&")
+                    .takeIf { it.length in 10..12 && it != url }
             
             val durationSecs = """"lengthSeconds":"(\d+)"""".toRegex().find(html)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
             if (durationSecs > 0) {

@@ -77,5 +77,35 @@ interface BrownPaperDao {
 
     @Query("SELECT * FROM folders WHERE name = :name LIMIT 1")
     suspend fun getFolderByName(name: String): FolderEntity?
+
+    @Query("SELECT * FROM articles")
+    suspend fun getAllArticles(): List<ArticleEntity>
+
+    @Query("SELECT * FROM folders")
+    suspend fun getAllFolders(): List<FolderEntity>
+
+    @Query("SELECT * FROM tags")
+    suspend fun getAllTags(): List<TagEntity>
+
+    @Query("SELECT * FROM article_tag_cross_ref")
+    suspend fun getAllTagCrossRefs(): List<ArticleTagCrossRef>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertArticles(articles: List<ArticleEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertFolders(folders: List<FolderEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTags(tags: List<TagEntity>)
+
+    @Query("DELETE FROM articles")
+    suspend fun deleteAllArticles()
+
+    @Query("DELETE FROM folders")
+    suspend fun deleteAllFolders()
+
+    @Query("DELETE FROM tags")
+    suspend fun deleteAllTags()
 }
 

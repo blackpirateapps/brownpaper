@@ -21,5 +21,8 @@ interface ArticleRepository {
     suspend fun updateVideoPosition(articleId: Long, position: Float)
     suspend fun createFolder(name: String): Long?
     suspend fun deleteArticle(articleId: Long)
+    
+    suspend fun exportData(): String
+    suspend fun importData(jsonData: String)
 }
 
