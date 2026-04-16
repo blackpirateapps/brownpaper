@@ -86,7 +86,7 @@ fun BrownPaperDrawerContent(
             )
             DrawerItem(
                 label = "Videos",
-                icon = androidx.compose.material.icons.outlined.OndemandVideo,
+                icon = Icons.Outlined.PlayCircle,
                 selected = currentSource == ArticleListSource.Videos,
                 onClick = { onSelectSource(ArticleListSource.Videos, null) },
             )
