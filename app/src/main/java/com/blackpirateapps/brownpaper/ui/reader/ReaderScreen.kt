@@ -66,6 +66,8 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.platform.LocalContext
 import coil3.compose.AsyncImage
 import com.blackpirateapps.brownpaper.R
+import com.blackpirateapps.brownpaper.core.model.ReaderFontFamily
+import com.blackpirateapps.brownpaper.core.model.ReaderPreferences
 import com.blackpirateapps.brownpaper.core.model.ReaderTheme
 import com.blackpirateapps.brownpaper.core.util.highlightMatches
 import com.blackpirateapps.brownpaper.core.util.toReadableArticleDate
