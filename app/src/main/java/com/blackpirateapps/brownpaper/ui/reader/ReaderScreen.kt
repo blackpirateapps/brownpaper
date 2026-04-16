@@ -61,8 +61,11 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.platform.LocalContext
 import coil3.compose.AsyncImage
+import com.blackpirateapps.brownpaper.R
 import com.blackpirateapps.brownpaper.core.model.ReaderFontFamily
 import com.blackpirateapps.brownpaper.core.model.ReaderPreferences
 import com.blackpirateapps.brownpaper.core.model.ReaderTheme
@@ -307,13 +310,15 @@ fun ReaderScreen(
                 )
             }
         } else {
-            ReaderContent(
-                article = article,
-                searchQuery = uiState.searchQuery,
-                preferences = uiState.readerPreferences,
-                colors = readerColors,
-                innerPadding = innerPadding,
-            )
+            SelectionContainer {
+                ReaderContent(
+                    article = article,
+                    searchQuery = uiState.searchQuery,
+                    preferences = uiState.readerPreferences,
+                    colors = readerColors,
+                    innerPadding = innerPadding,
+                )
+            }
         }
     }
 }
@@ -443,6 +448,10 @@ private fun ReaderSettingsSheet(
                                     ReaderFontFamily.SYSTEM -> "System"
                                     ReaderFontFamily.SERIF -> "Serif"
                                     ReaderFontFamily.MONO -> "Mono"
+                                    ReaderFontFamily.MERRIWEATHER -> "Merriweather"
+                                    ReaderFontFamily.LORA -> "Lora"
+                                    ReaderFontFamily.FIRA_SANS -> "Fira Sans"
+                                    ReaderFontFamily.INTER -> "Inter"
                                 },
                             )
                         },
@@ -510,6 +519,10 @@ private fun ReaderPreferences.asFontFamily(): FontFamily = when (fontFamily) {
     ReaderFontFamily.SYSTEM -> FontFamily.Default
     ReaderFontFamily.SERIF -> FontFamily.Serif
     ReaderFontFamily.MONO -> FontFamily.Monospace
+    ReaderFontFamily.MERRIWEATHER -> FontFamily(Font(R.font.merriweather))
+    ReaderFontFamily.LORA -> FontFamily(Font(R.font.lora))
+    ReaderFontFamily.FIRA_SANS -> FontFamily(Font(R.font.firasans))
+    ReaderFontFamily.INTER -> FontFamily(Font(R.font.inter))
 }
 
 private fun ReaderPreferences.asFontWeight(): FontWeight =

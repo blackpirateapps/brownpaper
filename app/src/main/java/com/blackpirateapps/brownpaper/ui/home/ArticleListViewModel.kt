@@ -29,28 +29,38 @@ class ArticleListViewModel @Inject constructor(
     articleRepository: ArticleRepository,
 ) : ViewModel() {
 
-    private val source = ArticleListSource.entries.firstOrNull {
-        it.routeValue == savedStateHandle.get<String>("source")
-    } ?: ArticleListSource.Inbox
+    private val sourceFlow = savedStateHandle.getStateFlow("source", ArticleListSource.Inbox.routeValue)
+    private val sourceIdFlow = savedStateHandle.getStateFlow("sourceId", -1L)
 
-    private val sourceId = savedStateHandle.get<Long>("sourceId") ?: -1L
-    private val filter = source.toFilter(sourceId)
     private val searchQuery = MutableStateFlow("")
 
-    private val titleFlow = when (source) {
-        ArticleListSource.Folder -> articleRepository.observeFolders().flatMapLatest { folders ->
-            flowOf(folders.firstOrNull { it.id == sourceId }?.name ?: source.title)
+    private val filterFlow = combine(sourceFlow, sourceIdFlow) { sourceValue, id ->
+        val source = ArticleListSource.entries.firstOrNull { it.routeValue == sourceValue } ?: ArticleListSource.Inbox
+        source.toFilter(id)
+    }
+
+    private val titleFlow = combine(sourceFlow, sourceIdFlow) { sourceValue, id ->
+        ArticleListSource.entries.firstOrNull { it.routeValue == sourceValue } ?: ArticleListSource.Inbox to id
+    }.flatMapLatest { (source, id) ->
+        when (source) {
+            ArticleListSource.Folder -> articleRepository.observeFolders().flatMapLatest { folders ->
+                flowOf(folders.firstOrNull { it.id == id }?.name ?: source.title)
+            }
+            ArticleListSource.Tag -> articleRepository.observeTags().flatMapLatest { tags ->
+                flowOf(tags.firstOrNull { it.id == id }?.name ?: source.title)
+            }
+            else -> flowOf(source.title)
         }
-        ArticleListSource.Tag -> articleRepository.observeTags().flatMapLatest { tags ->
-            flowOf(tags.firstOrNull { it.id == sourceId }?.name ?: source.title)
-        }
-        else -> flowOf(source.title)
     }
 
     val uiState: StateFlow<ArticleListUiState> = combine(
         searchQuery,
         titleFlow,
-        searchQuery.flatMapLatest { query -> articleRepository.observeArticles(filter, query) },
+        filterFlow.flatMapLatest { filter ->
+            searchQuery.flatMapLatest { query ->
+                articleRepository.observeArticles(filter, query)
+            }
+        },
     ) { query, title, articles ->
         ArticleListUiState(
             title = title,
@@ -60,7 +70,7 @@ class ArticleListViewModel @Inject constructor(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = ArticleListUiState(title = source.title),
+        initialValue = ArticleListUiState(),
     )
 
     fun updateSearchQuery(query: String) {

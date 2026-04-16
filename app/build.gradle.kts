@@ -116,6 +116,7 @@ dependencies {
     kapt("com.google.dagger:hilt-compiler:2.59.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("org.jsoup:jsoup:1.21.2")
+    implementation("net.dankito.readability4j:readability4j:1.0.8")
     implementation("io.coil-kt.coil3:coil-compose:3.3.0")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.3.0")
 

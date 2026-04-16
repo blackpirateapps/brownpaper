@@ -4,6 +4,10 @@ enum class ReaderFontFamily {
     SYSTEM,
     SERIF,
     MONO,
+    MERRIWEATHER,
+    LORA,
+    FIRA_SANS,
+    INTER,
 }
 
 enum class ReaderTheme {
