@@ -396,7 +396,7 @@ private fun ReaderContent(
             }
         }
 
-        items(paragraphs, key = { it.hashCode() }) { paragraph ->
+        items(paragraphs) { paragraph ->
             Text(
                 text = paragraph.highlightMatches(
                     query = searchQuery,
