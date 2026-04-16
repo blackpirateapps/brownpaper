@@ -30,12 +30,17 @@ BrownPaper is an offline-first Android "read later" app built in Kotlin with Jet
 - Full Gradle/Android compilation was not run locally because the environment did not include `java` or `gradle`.
 
 ## Known follow-up items
-- Add a dedicated background worker if ingestion must survive process death; the current implementation follows the prompt’s coroutine-based ingestion requirement.
-- Improve article extraction with a stronger readability pipeline if content quality across diverse publishers becomes an issue.
-- Add instrumentation/UI tests once an Android toolchain is available locally or in CI.
-- Consider adding app icons, screenshot tests, and release signing configuration before store distribution.
+- Move ingestion to `WorkManager` if saves must survive app backgrounding or process death; the current implementation uses app-scoped coroutines, so an interrupted fetch can be lost.
+- Improve article extraction with a stronger readability pipeline if text quality varies too much across publishers; the current `Jsoup` heuristics are intentionally lightweight.
+- Add instrumentation and Compose UI tests once an Android toolchain is available locally or in CI; only small JVM utility tests were added in this pass.
+- Add launcher icons, screenshot tests, and release signing configuration before store distribution; the project currently builds for CI, but release packaging still needs store-level polish.
+
+## Build migration notes
+- The project targets AGP `9.1.x`, which uses built-in Kotlin support.
+- `org.jetbrains.kotlin.android` was removed from module and top-level build files per the AGP migration guide.
+- `kotlin-kapt` was replaced with `com.android.legacy-kapt`, and `android.kotlinOptions {}` was migrated to `kotlin { compilerOptions {} }`.
+- A Kotlin Gradle plugin classpath entry is declared in the top-level build so the Compose compiler plugin version stays aligned with the Kotlin compiler used by AGP built-in Kotlin.
 
 ## CI/build notes
 - GitHub Actions uses `actions/setup-java`, `android-actions/setup-android`, and `gradle/actions/setup-gradle`.
 - The workflow builds `:app:assembleRelease` and uploads the resulting APK artifact from `app/build/outputs/apk/release`.
-
