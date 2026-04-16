@@ -190,9 +190,8 @@ class ArticleRepositoryImpl @Inject constructor(
             sql.append(" INNER JOIN article_tag_cross_ref atr ON atr.articleId = a.id")
         }
 
-        val ftsQuery = searchQuery.toFtsQuery()
-        if (ftsQuery != null) {
-            sql.append(" INNER JOIN article_fts ON article_fts.rowid = a.id")
+        if (searchQuery.isNotBlank()) {
+            // No inner join needed for LIKE
         }
 
         val clauses = mutableListOf<String>()
@@ -200,7 +199,6 @@ class ArticleRepositoryImpl @Inject constructor(
         when (filter) {
             ArticleListFilter.Inbox -> clauses += "a.isArchived = 0"
             ArticleListFilter.Likes -> {
-                clauses += "a.isArchived = 0"
                 clauses += "a.isLiked = 1"
             }
             ArticleListFilter.Archived -> clauses += "a.isArchived = 1"
@@ -216,9 +214,11 @@ class ArticleRepositoryImpl @Inject constructor(
             }
         }
 
-        if (ftsQuery != null) {
-            clauses += "article_fts MATCH ?"
-            args += ftsQuery
+        if (searchQuery.isNotBlank()) {
+            clauses += "(a.title LIKE ? OR a.extractedTextContent LIKE ?)"
+            val likeTerm = "%${searchQuery.trim()}%"
+            args += likeTerm
+            args += likeTerm
         }
 
         if (clauses.isNotEmpty()) {

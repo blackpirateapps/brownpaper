@@ -25,12 +25,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.blackpirateapps.brownpaper.core.util.highlightMatches
 import com.blackpirateapps.brownpaper.core.util.toReadableArticleDate
 import com.blackpirateapps.brownpaper.domain.model.ArticleSummary
 
 @Composable
 fun ArticleCard(
     article: ArticleSummary,
+    searchQuery: String = "",
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -62,19 +64,20 @@ fun ArticleCard(
                 )
             }
 
+            val highlightColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.24f)
             Column(
                 modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
-                    text = article.title,
+                    text = article.title.highlightMatches(searchQuery, highlightColor),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = article.excerpt,
+                    text = article.excerpt.highlightMatches(searchQuery, highlightColor),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,

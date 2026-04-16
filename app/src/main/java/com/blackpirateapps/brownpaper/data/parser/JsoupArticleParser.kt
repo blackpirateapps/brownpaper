@@ -29,8 +29,15 @@ class JsoupArticleParser @Inject constructor() {
 
         // Readability4J's textContent lacks formatting. We use the DOM structure.
         val bodyText = article.articleContent?.let { contentElement ->
-            contentElement.select("p, h1, h2, h3, h4, h5, h6, li")
-                .map { it.text().trim() }
+            contentElement.select("p, h1, h2, h3, h4, h5, h6, li, img")
+                .map { element ->
+                    if (element.tagName() == "img") {
+                        val src = element.absUrl("src")
+                        if (src.isNotBlank()) "![img]($src)" else ""
+                    } else {
+                        element.text().trim()
+                    }
+                }
                 .filter { it.isNotBlank() }
                 .joinToString("\n\n")
         }?.takeIf { it.isNotBlank() } ?: article.textContent?.trim() ?: document.body().text()

@@ -66,9 +66,8 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.platform.LocalContext
 import coil3.compose.AsyncImage
 import com.blackpirateapps.brownpaper.R
-import com.blackpirateapps.brownpaper.core.model.ReaderFontFamily
-import com.blackpirateapps.brownpaper.core.model.ReaderPreferences
 import com.blackpirateapps.brownpaper.core.model.ReaderTheme
+import com.blackpirateapps.brownpaper.core.util.highlightMatches
 import com.blackpirateapps.brownpaper.core.util.toReadableArticleDate
 import com.blackpirateapps.brownpaper.domain.model.ArticleDetail
 import com.blackpirateapps.brownpaper.ui.components.ManageTagsDialog
@@ -397,19 +396,31 @@ private fun ReaderContent(
         }
 
         items(paragraphs) { paragraph ->
-            Text(
-                text = paragraph.highlightMatches(
-                    query = searchQuery,
-                    highlightColor = colors.highlight,
-                ),
-                style = TextStyle(
-                    fontFamily = preferences.asFontFamily(),
-                    fontWeight = preferences.asFontWeight(),
-                    fontSize = MaterialTheme.typography.bodyLarge.fontSize * (preferences.fontSizeSp / 18f),
-                    lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * (preferences.fontSizeSp / 18f),
-                ),
-                color = colors.content,
-            )
+            if (paragraph.startsWith("![img](") && paragraph.endsWith(")")) {
+                val url = paragraph.substringAfter("![img](").substringBeforeLast(")")
+                AsyncImage(
+                    model = url,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    contentScale = androidx.compose.ui.layout.ContentScale.FillWidth
+                )
+            } else {
+                Text(
+                    text = paragraph.highlightMatches(
+                        query = searchQuery,
+                        highlightColor = colors.highlight,
+                    ),
+                    style = TextStyle(
+                        fontFamily = preferences.asFontFamily(),
+                        fontWeight = preferences.asFontWeight(),
+                        fontSize = MaterialTheme.typography.bodyLarge.fontSize * (preferences.fontSizeSp / 18f),
+                        lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * (preferences.fontSizeSp / 18f),
+                    ),
+                    color = colors.content,
+                )
+            }
         }
     }
 }
@@ -555,38 +566,6 @@ private fun readerColors(preferences: ReaderPreferences): ReaderColors = when (p
         muted = Color(0xFF6C604F),
         highlight = Color(0xFFD8B25A).copy(alpha = 0.36f),
     )
-}
-
-private fun String.highlightMatches(
-    query: String,
-    highlightColor: Color,
-): AnnotatedString {
-    if (query.isBlank()) {
-        return AnnotatedString(this)
-    }
-
-    val lowerText = lowercase()
-    val lowerQuery = query.lowercase()
-
-    return buildAnnotatedString {
-        var startIndex = 0
-        while (startIndex < length) {
-            val matchIndex = lowerText.indexOf(lowerQuery, startIndex)
-            if (matchIndex < 0) {
-                append(substring(startIndex))
-                break
-            }
-
-            if (matchIndex > startIndex) {
-                append(substring(startIndex, matchIndex))
-            }
-
-            pushStyle(SpanStyle(background = highlightColor))
-            append(substring(matchIndex, matchIndex + lowerQuery.length))
-            pop()
-            startIndex = matchIndex + lowerQuery.length
-        }
-    }
 }
 
 private fun shareArticle(context: android.content.Context, url: String) {

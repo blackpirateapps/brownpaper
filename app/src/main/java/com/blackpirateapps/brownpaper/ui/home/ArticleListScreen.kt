@@ -194,6 +194,7 @@ fun ArticleListScreen(
                 items(uiState.articles, key = { it.id }) { article ->
                     ArticleCard(
                         article = article,
+                        searchQuery = uiState.searchQuery,
                         onClick = { onArticleSelected(article.id) },
                     )
                 }
