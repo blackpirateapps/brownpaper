@@ -83,6 +83,7 @@ class WallabagRepositoryImpl @Inject constructor(
             if (oldSession != null && oldSession.host != normalizedHost) {
                 dao.clearWallabagMetadata()
                 dao.deleteAllPendingSyncOperations()
+                dao.deleteAllPendingWallabagDeleteOperations()
             }
 
             sessionStore.saveSession(finalSession)
@@ -95,6 +96,11 @@ class WallabagRepositoryImpl @Inject constructor(
 
     override suspend fun disconnect() {
         sessionStore.clear()
+        withContext(dispatchers.io) {
+            dao.clearWallabagMetadata()
+            dao.deleteAllPendingSyncOperations()
+            dao.deleteAllPendingWallabagDeleteOperations()
+        }
     }
 
     override fun scheduleSync() {
@@ -109,15 +115,36 @@ class WallabagRepositoryImpl @Inject constructor(
                 ?: return@withContext WallabagSyncResult.NotConnected
 
             runCatching {
+                val deleted = pushPendingDeletes(session)
                 val pulled = pullRemoteEntries(session, startedAt)
                 val linkedOrCreated = linkOrCreateLocalArticles(session, startedAt)
-                val pushed = pushPendingOperations(session, startedAt) + linkedOrCreated
+                val pushed = deleted + pushPendingOperations(session, startedAt) + linkedOrCreated
                 sessionStore.updateSession { it.copy(lastSyncAtMillis = startedAt) }
                 WallabagSyncResult.Success(pulled = pulled, pushed = pushed)
             }.getOrElse { throwable ->
                 WallabagSyncResult.Failure(throwable.userFacingMessage())
             }
         }
+    }
+
+    private suspend fun pushPendingDeletes(session: WallabagSession): Int {
+        var deleted = 0
+        dao.getPendingWallabagDeleteOperations().forEach { operation ->
+            try {
+                apiClient.deleteEntry(session, operation.wallabagEntryId)
+                dao.deletePendingWallabagDeleteOperation(operation.id)
+                deleted += 1
+            } catch (throwable: Throwable) {
+                if (throwable is WallabagApiException && throwable.code == 404) {
+                    dao.deletePendingWallabagDeleteOperation(operation.id)
+                    deleted += 1
+                } else {
+                    dao.markPendingWallabagDeleteOperationFailed(operation.id, throwable.userFacingMessage())
+                    throw throwable
+                }
+            }
+        }
+        return deleted
     }
 
     private suspend fun pullRemoteEntries(session: WallabagSession, syncedAt: Long): Int {

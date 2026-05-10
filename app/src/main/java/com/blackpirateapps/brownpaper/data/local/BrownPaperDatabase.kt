@@ -13,8 +13,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         TagEntity::class,
         ArticleTagCrossRef::class,
         PendingSyncOperationEntity::class,
+        PendingWallabagDeleteOperationEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 abstract class BrownPaperDatabase : RoomDatabase() {
@@ -57,6 +58,28 @@ abstract class BrownPaperDatabase : RoomDatabase() {
                     """
                     CREATE UNIQUE INDEX IF NOT EXISTS index_wallabag_sync_operations_articleId_operationType
                     ON wallabag_sync_operations(articleId, operationType)
+                    """.trimIndent(),
+                )
+            }
+        }
+
+        val Migration3To4: Migration = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS wallabag_delete_operations (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        wallabagEntryId INTEGER NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        attemptCount INTEGER NOT NULL DEFAULT 0,
+                        lastError TEXT
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS index_wallabag_delete_operations_wallabagEntryId
+                    ON wallabag_delete_operations(wallabagEntryId)
                     """.trimIndent(),
                 )
             }

@@ -159,6 +159,10 @@ fun BrownPaperApp(
                             navController.navigate(BrownPaperRoutes.readerRoute(articleId))
                         },
                         onAddArticle = { showAddDialog = true },
+                        onToggleFavorite = viewModel::toggleFavorite,
+                        onToggleArchive = viewModel::toggleArchive,
+                        onMarkRead = viewModel::markRead,
+                        onDeleteArticle = viewModel::deleteArticle,
                     )
                 }
 

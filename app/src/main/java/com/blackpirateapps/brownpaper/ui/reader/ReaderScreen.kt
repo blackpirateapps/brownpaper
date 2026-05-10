@@ -76,6 +76,7 @@ import com.blackpirateapps.brownpaper.domain.model.ArticleDetail
 import com.blackpirateapps.brownpaper.ui.components.ManageTagsDialog
 import com.blackpirateapps.brownpaper.ui.components.MoveToFolderDialog
 import com.blackpirateapps.brownpaper.ui.components.SearchInArticleDialog
+import java.text.NumberFormat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -332,6 +333,7 @@ fun ReaderScreen(
                         preferences = uiState.readerPreferences,
                         colors = readerColors,
                         innerPadding = innerPadding,
+                        onOpenOriginalUrl = { openInBrowser(context, article.originalUrl) },
                     )
                 }
             }
@@ -346,12 +348,16 @@ private fun ReaderContent(
     preferences: ReaderPreferences,
     colors: ReaderColors,
     innerPadding: PaddingValues,
+    onOpenOriginalUrl: () -> Unit,
 ) {
     val paragraphs = remember(article.bodyText) {
         article.bodyText
             .split(Regex("\n\\s*\n"))
             .map(String::trim)
             .filter(String::isNotBlank)
+    }
+    val metadata = remember(article.bodyText, article.originalUrl) {
+        article.toReaderMetadata()
     }
 
     LazyColumn(
@@ -390,6 +396,25 @@ private fun ReaderContent(
                     style = MaterialTheme.typography.labelLarge,
                     color = colors.muted,
                 )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    AssistChip(
+                        onClick = {},
+                        label = { Text(metadata.readingTimeText) },
+                    )
+                    AssistChip(
+                        onClick = {},
+                        label = { Text(metadata.wordCountText) },
+                    )
+                    AssistChip(
+                        onClick = onOpenOriginalUrl,
+                        label = { Text(metadata.domain) },
+                    )
+                }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -601,3 +626,34 @@ private fun openInBrowser(context: android.content.Context, url: String) {
         )
     }
 }
+
+private data class ReaderMetadata(
+    val readingTimeText: String,
+    val wordCountText: String,
+    val domain: String,
+)
+
+private fun ArticleDetail.toReaderMetadata(): ReaderMetadata {
+    val wordCount = bodyText
+        .replace(Regex("""!\[img]\([^)]+\)"""), " ")
+        .split(Regex("""\s+"""))
+        .map(String::trim)
+        .count { it.any(Char::isLetterOrDigit) }
+    val readingMinutes = (wordCount.coerceAtLeast(1) + WordsPerMinute - 1) / WordsPerMinute
+    val formattedWords = NumberFormat.getIntegerInstance().format(wordCount)
+    return ReaderMetadata(
+        readingTimeText = "$readingMinutes min read",
+        wordCountText = "$formattedWords words",
+        domain = originalUrl.toDisplayDomain(),
+    )
+}
+
+private fun String.toDisplayDomain(): String {
+    val host = runCatching { Uri.parse(this).host }.getOrNull()
+    return host
+        ?.removePrefix("www.")
+        ?.takeIf(String::isNotBlank)
+        ?: this
+}
+
+private const val WordsPerMinute = 200

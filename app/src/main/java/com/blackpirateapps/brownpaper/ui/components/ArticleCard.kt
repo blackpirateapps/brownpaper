@@ -9,12 +9,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.Icons
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,6 +57,10 @@ fun ArticleCard(
     article: ArticleSummary,
     searchQuery: String = "",
     onClick: () -> Unit,
+    onToggleFavorite: () -> Unit,
+    onToggleArchive: () -> Unit,
+    onMarkRead: () -> Unit,
+    onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -121,12 +130,6 @@ fun ArticleCard(
                         }
                     }
                 }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(72.dp),
-                )
             }
 
             val highlightColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.24f)
@@ -168,16 +171,47 @@ fun ArticleCard(
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    if (article.isLiked) {
-                        Icon(
-                            imageVector = Icons.Outlined.Favorite,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        IconButton(onClick = onToggleFavorite) {
+                            Icon(
+                                imageVector = if (article.isLiked) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
+                                contentDescription = if (article.isLiked) "Remove favorite" else "Favorite",
+                                tint = if (article.isLiked) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                            )
+                        }
+                        IconButton(onClick = onToggleArchive) {
+                            Icon(
+                                imageVector = Icons.Outlined.Archive,
+                                contentDescription = if (article.isArchived) "Unarchive" else "Archive",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        IconButton(
+                            onClick = onMarkRead,
+                            enabled = !article.isArchived,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.CheckCircle,
+                                contentDescription = "Mark as read",
+                            )
+                        }
+                        IconButton(onClick = onDelete) {
+                            Icon(
+                                imageVector = Icons.Outlined.Delete,
+                                contentDescription = "Delete",
+                                tint = MaterialTheme.colorScheme.error,
+                            )
+                        }
                     }
                 }
             }
         }
     }
 }
-

@@ -194,6 +194,28 @@ interface BrownPaperDao {
     @Query("SELECT * FROM wallabag_sync_operations ORDER BY createdAt ASC")
     suspend fun getPendingSyncOperations(): List<PendingSyncOperationEntity>
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPendingWallabagDeleteOperation(operation: PendingWallabagDeleteOperationEntity)
+
+    @Query("SELECT * FROM wallabag_delete_operations ORDER BY createdAt ASC")
+    suspend fun getPendingWallabagDeleteOperations(): List<PendingWallabagDeleteOperationEntity>
+
+    @Query("DELETE FROM wallabag_delete_operations WHERE id = :operationId")
+    suspend fun deletePendingWallabagDeleteOperation(operationId: Long)
+
+    @Query("DELETE FROM wallabag_delete_operations")
+    suspend fun deleteAllPendingWallabagDeleteOperations()
+
+    @Query(
+        """
+        UPDATE wallabag_delete_operations
+        SET attemptCount = attemptCount + 1,
+            lastError = :message
+        WHERE id = :operationId
+        """,
+    )
+    suspend fun markPendingWallabagDeleteOperationFailed(operationId: Long, message: String)
+
     @Query("SELECT COUNT(*) FROM wallabag_sync_operations WHERE articleId = :articleId")
     suspend fun countPendingSyncOperations(articleId: Long): Int
 

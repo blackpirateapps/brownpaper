@@ -39,7 +39,7 @@ object AppModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): BrownPaperDatabase = Room
         .databaseBuilder(context, BrownPaperDatabase::class.java, "brownpaper.db")
-        .addMigrations(BrownPaperDatabase.Migration2To3)
+        .addMigrations(BrownPaperDatabase.Migration2To3, BrownPaperDatabase.Migration3To4)
         .build()
 
     @Provides

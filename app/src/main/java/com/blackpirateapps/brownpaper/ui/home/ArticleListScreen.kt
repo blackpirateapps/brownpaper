@@ -51,6 +51,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.blackpirateapps.brownpaper.domain.model.ArticleSummary
 import com.blackpirateapps.brownpaper.ui.components.ArticleCard
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,6 +64,10 @@ fun ArticleListScreen(
     onSearchQueryChange: (String) -> Unit,
     onArticleSelected: (Long) -> Unit,
     onAddArticle: () -> Unit,
+    onToggleFavorite: (Long) -> Unit,
+    onToggleArchive: (ArticleSummary) -> Unit,
+    onMarkRead: (Long) -> Unit,
+    onDeleteArticle: (Long) -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
@@ -205,6 +210,10 @@ fun ArticleListScreen(
                         article = article,
                         searchQuery = uiState.searchQuery,
                         onClick = { onArticleSelected(article.id) },
+                        onToggleFavorite = { onToggleFavorite(article.id) },
+                        onToggleArchive = { onToggleArchive(article) },
+                        onMarkRead = { onMarkRead(article.id) },
+                        onDelete = { onDeleteArticle(article.id) },
                         modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)
                     )
                 }
@@ -240,4 +249,3 @@ private fun EmptyListState(
         }
     }
 }
-

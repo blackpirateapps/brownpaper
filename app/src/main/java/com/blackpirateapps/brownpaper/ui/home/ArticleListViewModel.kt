@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 data class ArticleListUiState(
     val title: String = "Home",
@@ -26,7 +27,7 @@ data class ArticleListUiState(
 @HiltViewModel
 class ArticleListViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    articleRepository: ArticleRepository,
+    private val articleRepository: ArticleRepository,
 ) : ViewModel() {
 
     private val _sourceFlow = MutableStateFlow(savedStateHandle.get<String>("source") ?: ArticleListSource.Inbox.routeValue)
@@ -82,6 +83,30 @@ class ArticleListViewModel @Inject constructor(
         _sourceFlow.value = sourceValue
         _sourceIdFlow.value = sourceId
     }
+
+    fun toggleFavorite(articleId: Long) {
+        viewModelScope.launch {
+            articleRepository.toggleLiked(articleId)
+        }
+    }
+
+    fun toggleArchive(article: ArticleSummary) {
+        viewModelScope.launch {
+            articleRepository.setArchived(article.id, !article.isArchived)
+        }
+    }
+
+    fun markRead(articleId: Long) {
+        viewModelScope.launch {
+            articleRepository.setArchived(articleId, true)
+        }
+    }
+
+    fun deleteArticle(articleId: Long) {
+        viewModelScope.launch {
+            articleRepository.deleteArticle(articleId)
+        }
+    }
 }
 
 private fun ArticleListSource.toFilter(sourceId: Long): ArticleListFilter = when (this) {
@@ -92,4 +117,3 @@ private fun ArticleListSource.toFilter(sourceId: Long): ArticleListFilter = when
     ArticleListSource.Folder -> ArticleListFilter.FolderFilter(sourceId)
     ArticleListSource.Tag -> ArticleListFilter.TagFilter(sourceId)
 }
-

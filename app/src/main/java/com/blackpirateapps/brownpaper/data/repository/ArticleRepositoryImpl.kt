@@ -10,6 +10,7 @@ import com.blackpirateapps.brownpaper.data.local.ArticleTagCrossRef
 import com.blackpirateapps.brownpaper.data.local.BrownPaperDao
 import com.blackpirateapps.brownpaper.data.local.FolderEntity
 import com.blackpirateapps.brownpaper.data.local.PendingSyncOperationEntity
+import com.blackpirateapps.brownpaper.data.local.PendingWallabagDeleteOperationEntity
 import com.blackpirateapps.brownpaper.data.local.TagEntity
 import com.blackpirateapps.brownpaper.data.parser.JsoupArticleParser
 import com.blackpirateapps.brownpaper.data.wallabag.WallabagSyncOperationType
@@ -210,7 +211,19 @@ class ArticleRepositoryImpl @Inject constructor(
 
     override suspend fun deleteArticle(articleId: Long) {
         withContext(dispatchers.io) {
+            val article = dao.getArticleById(articleId)
+            article?.wallabagEntryId?.let { wallabagEntryId ->
+                dao.insertPendingWallabagDeleteOperation(
+                    PendingWallabagDeleteOperationEntity(
+                        wallabagEntryId = wallabagEntryId,
+                        createdAt = System.currentTimeMillis(),
+                    ),
+                )
+            }
             dao.deleteArticle(articleId)
+            if (article?.wallabagEntryId != null) {
+                wallabagSyncScheduler.schedule()
+            }
         }
     }
 

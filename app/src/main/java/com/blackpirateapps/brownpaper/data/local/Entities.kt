@@ -95,6 +95,18 @@ data class PendingSyncOperationEntity(
 )
 
 @Entity(
+    tableName = "wallabag_delete_operations",
+    indices = [Index(value = ["wallabagEntryId"], unique = true)],
+)
+data class PendingWallabagDeleteOperationEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val wallabagEntryId: Long,
+    val createdAt: Long,
+    @ColumnInfo(defaultValue = "0") val attemptCount: Int = 0,
+    val lastError: String? = null,
+)
+
+@Entity(
     tableName = "article_tag_cross_ref",
     primaryKeys = ["articleId", "tagId"],
     foreignKeys = [

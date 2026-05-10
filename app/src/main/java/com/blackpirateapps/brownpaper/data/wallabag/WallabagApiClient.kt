@@ -121,6 +121,20 @@ class WallabagApiClient @Inject constructor(
         ),
     )
 
+    suspend fun deleteEntry(session: WallabagSession, entryId: Long) {
+        val response = transport.execute(
+            authorizedRequest(
+                session = session,
+                method = "DELETE",
+                path = "/api/entries/$entryId",
+                query = mapOf("expect" to "id"),
+            ),
+        )
+        if (!response.isSuccessful) {
+            throw WallabagApiException(response.code, response.body.ifBlank { "wallabag request failed" })
+        }
+    }
+
     suspend fun addEntryTags(
         session: WallabagSession,
         entryId: Long,
