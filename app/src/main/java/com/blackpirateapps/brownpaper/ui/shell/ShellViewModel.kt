@@ -6,6 +6,8 @@ import com.blackpirateapps.brownpaper.domain.model.AddArticleResult
 import com.blackpirateapps.brownpaper.domain.model.Folder
 import com.blackpirateapps.brownpaper.domain.model.Tag
 import com.blackpirateapps.brownpaper.domain.repository.ArticleRepository
+import com.blackpirateapps.brownpaper.domain.repository.WallabagRepository
+import com.blackpirateapps.brownpaper.data.wallabag.WallabagSyncResult
 import com.blackpirateapps.brownpaper.domain.usecase.AddArticleUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -22,15 +24,19 @@ data class ShellUiState(
     val folders: List<Folder> = emptyList(),
     val tags: List<Tag> = emptyList(),
     val isSavingArticle: Boolean = false,
+    val isWallabagConnected: Boolean = false,
+    val isSyncingWallabag: Boolean = false,
 )
 
 @HiltViewModel
 class ShellViewModel @Inject constructor(
     articleRepository: ArticleRepository,
     private val addArticleUseCase: AddArticleUseCase,
+    private val wallabagRepository: WallabagRepository,
 ) : ViewModel() {
 
     private val isSavingArticle = MutableStateFlow(false)
+    private val isSyncingWallabag = MutableStateFlow(false)
     private val _messages = MutableSharedFlow<String>()
 
     val messages = _messages.asSharedFlow()
@@ -39,11 +45,15 @@ class ShellViewModel @Inject constructor(
         articleRepository.observeFolders(),
         articleRepository.observeTags(),
         isSavingArticle,
-    ) { folders, tags, saving ->
+        wallabagRepository.accountState,
+        isSyncingWallabag,
+    ) { folders, tags, saving, wallabagAccount, syncing ->
         ShellUiState(
             folders = folders,
             tags = tags,
             isSavingArticle = saving,
+            isWallabagConnected = wallabagAccount.isConnected,
+            isSyncingWallabag = syncing,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -68,5 +78,21 @@ class ShellViewModel @Inject constructor(
             isSavingArticle.value = false
         }
     }
-}
 
+    fun syncWallabag() {
+        if (isSyncingWallabag.value) {
+            return
+        }
+
+        viewModelScope.launch {
+            isSyncingWallabag.value = true
+            val message = when (val result = wallabagRepository.syncNow()) {
+                is WallabagSyncResult.Success -> "wallabag synced: ${result.pulled} pulled, ${result.pushed} pushed."
+                WallabagSyncResult.NotConnected -> "Connect wallabag in Settings first."
+                is WallabagSyncResult.Failure -> result.message
+            }
+            _messages.emit(message)
+            isSyncingWallabag.value = false
+        }
+    }
+}

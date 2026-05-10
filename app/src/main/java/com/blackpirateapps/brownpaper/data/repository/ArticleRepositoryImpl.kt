@@ -274,6 +274,7 @@ class ArticleRepositoryImpl @Inject constructor(
             ArticleListFilter.Likes -> {
                 clauses += "a.isLiked = 1"
             }
+            ArticleListFilter.Read -> clauses += "a.isArchived = 1"
             ArticleListFilter.Archived -> clauses += "a.isArchived = 1"
             ArticleListFilter.Videos -> {
                 clauses += "a.isArchived = 0"
@@ -285,7 +286,6 @@ class ArticleRepositoryImpl @Inject constructor(
                 args += filter.folderId
             }
             is ArticleListFilter.TagFilter -> {
-                clauses += "a.isArchived = 0"
                 clauses += "atr.tagId = ?"
                 args += filter.tagId
             }

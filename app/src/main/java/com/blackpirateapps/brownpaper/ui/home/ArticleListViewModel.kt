@@ -112,6 +112,7 @@ class ArticleListViewModel @Inject constructor(
 private fun ArticleListSource.toFilter(sourceId: Long): ArticleListFilter = when (this) {
     ArticleListSource.Inbox -> ArticleListFilter.Inbox
     ArticleListSource.Likes -> ArticleListFilter.Likes
+    ArticleListSource.Read -> ArticleListFilter.Read
     ArticleListSource.Archived -> ArticleListFilter.Archived
     ArticleListSource.Videos -> ArticleListFilter.Videos
     ArticleListSource.Folder -> ArticleListFilter.FolderFilter(sourceId)

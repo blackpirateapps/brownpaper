@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -18,6 +18,7 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Label
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -43,7 +44,10 @@ fun BrownPaperDrawerContent(
     currentSourceId: Long?,
     tags: List<Tag>,
     folders: List<Folder>,
+    isWallabagConnected: Boolean,
+    isSyncingWallabag: Boolean,
     onSelectSource: (ArticleListSource?, Long?) -> Unit,
+    onSyncWallabag: () -> Unit,
 ) {
     var tagsExpanded by rememberSaveable { mutableStateOf(true) }
     var foldersExpanded by rememberSaveable { mutableStateOf(true) }
@@ -81,10 +85,10 @@ fun BrownPaperDrawerContent(
                 onClick = { onSelectSource(ArticleListSource.Likes, null) },
             )
             DrawerItem(
-                label = "Archived",
-                icon = Icons.Outlined.Archive,
-                selected = currentSource == ArticleListSource.Archived,
-                onClick = { onSelectSource(ArticleListSource.Archived, null) },
+                label = "Read",
+                icon = Icons.Outlined.CheckCircle,
+                selected = currentSource == ArticleListSource.Read,
+                onClick = { onSelectSource(ArticleListSource.Read, null) },
             )
             DrawerItem(
                 label = "Videos",
@@ -98,6 +102,14 @@ fun BrownPaperDrawerContent(
                 selected = false,
                 onClick = { onSelectSource(null, null) },
             )
+            if (isWallabagConnected) {
+                DrawerItem(
+                    label = if (isSyncingWallabag) "Syncing..." else "Sync",
+                    icon = Icons.Outlined.Sync,
+                    selected = false,
+                    onClick = onSyncWallabag,
+                )
+            }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 

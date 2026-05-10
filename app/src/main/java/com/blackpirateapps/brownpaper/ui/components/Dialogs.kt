@@ -2,15 +2,21 @@ package com.blackpirateapps.brownpaper.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Label
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -72,6 +78,7 @@ fun AddUrlDialog(
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ManageTagsDialog(
     availableTags: List<Tag>,
@@ -84,6 +91,13 @@ fun ManageTagsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                imageVector = Icons.Outlined.Label,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        },
         title = { Text("Manage tags") },
         text = {
             Column(
@@ -100,22 +114,39 @@ fun ManageTagsDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 } else {
-                    availableTags.forEach { tag ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Checkbox(
-                                checked = tag.id in draftSelection,
-                                onCheckedChange = { checked ->
-                                    draftSelection = if (checked) {
-                                        draftSelection + tag.id
-                                    } else {
+                    Text(
+                        text = "Current tags",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        availableTags.forEach { tag ->
+                            val selected = tag.id in draftSelection
+                            FilterChip(
+                                selected = selected,
+                                onClick = {
+                                    draftSelection = if (selected) {
                                         draftSelection - tag.id
+                                    } else {
+                                        draftSelection + tag.id
                                     }
                                 },
+                                label = { Text(tag.name) },
+                                leadingIcon = if (selected) {
+                                    {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Check,
+                                            contentDescription = null,
+                                        )
+                                    }
+                                } else {
+                                    null
+                                },
                             )
-                            Text(text = tag.name)
                         }
                     }
                 }

@@ -16,10 +16,15 @@ enum class ReaderTheme {
     PAPER,
 }
 
+enum class ReaderFontWeight {
+    LIGHT,
+    REGULAR,
+    BOLD,
+}
+
 data class ReaderPreferences(
     val fontFamily: ReaderFontFamily = ReaderFontFamily.SYSTEM,
     val fontSizeSp: Float = 18f,
-    val useEmphasizedWeight: Boolean = false,
+    val fontWeight: ReaderFontWeight = ReaderFontWeight.REGULAR,
     val theme: ReaderTheme = ReaderTheme.LIGHT,
 )
-

@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.blackpirateapps.brownpaper.core.model.ReaderFontFamily
+import com.blackpirateapps.brownpaper.core.model.ReaderFontWeight
 import com.blackpirateapps.brownpaper.core.model.ReaderPreferences
 import com.blackpirateapps.brownpaper.core.model.ReaderTheme
 import com.blackpirateapps.brownpaper.domain.model.ArticleDetail
@@ -101,9 +102,9 @@ class ReaderViewModel @Inject constructor(
         }
     }
 
-    fun updateEmphasizedWeight(enabled: Boolean) {
+    fun updateFontWeight(fontWeight: ReaderFontWeight) {
         viewModelScope.launch {
-            readerPreferencesRepository.updateEmphasizedWeight(enabled)
+            readerPreferencesRepository.updateFontWeight(fontWeight)
         }
     }
 

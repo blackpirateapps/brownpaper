@@ -98,6 +98,8 @@ fun BrownPaperApp(
                     currentSourceId = currentSourceId,
                     tags = shellUiState.tags,
                     folders = shellUiState.folders,
+                    isWallabagConnected = shellUiState.isWallabagConnected,
+                    isSyncingWallabag = shellUiState.isSyncingWallabag,
                     onSelectSource = { source, sourceId ->
                         if (source == null) {
                             navController.navigate(BrownPaperRoutes.settingsRoute()) {
@@ -114,6 +116,10 @@ fun BrownPaperApp(
                                 restoreState = true
                             }
                         }
+                        coroutineScope.launch { drawerState.close() }
+                    },
+                    onSyncWallabag = {
+                        shellViewModel.syncWallabag()
                         coroutineScope.launch { drawerState.close() }
                     },
                 )
@@ -183,7 +189,7 @@ fun BrownPaperApp(
                         onToggleArchived = viewModel::toggleArchived,
                         onUpdateFontFamily = viewModel::updateFontFamily,
                         onUpdateFontSize = viewModel::updateFontSize,
-                        onUpdateEmphasizedWeight = viewModel::updateEmphasizedWeight,
+                        onUpdateFontWeight = viewModel::updateFontWeight,
                         onUpdateTheme = viewModel::updateTheme,
                         onSaveTags = viewModel::saveTags,
                         onMoveToFolder = viewModel::moveToFolder,

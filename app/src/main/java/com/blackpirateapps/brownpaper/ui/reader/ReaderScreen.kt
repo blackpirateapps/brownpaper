@@ -2,32 +2,43 @@ package com.blackpirateapps.brownpaper.ui.reader
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.Article
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.Label
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.OpenInBrowser
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material3.AssistChip
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,11 +47,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -55,10 +67,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -68,6 +77,7 @@ import androidx.compose.ui.platform.LocalContext
 import coil3.compose.AsyncImage
 import com.blackpirateapps.brownpaper.R
 import com.blackpirateapps.brownpaper.core.model.ReaderFontFamily
+import com.blackpirateapps.brownpaper.core.model.ReaderFontWeight
 import com.blackpirateapps.brownpaper.core.model.ReaderPreferences
 import com.blackpirateapps.brownpaper.core.model.ReaderTheme
 import com.blackpirateapps.brownpaper.core.util.highlightMatches
@@ -89,7 +99,7 @@ fun ReaderScreen(
     onToggleArchived: (Boolean) -> Unit,
     onUpdateFontFamily: (ReaderFontFamily) -> Unit,
     onUpdateFontSize: (Float) -> Unit,
-    onUpdateEmphasizedWeight: (Boolean) -> Unit,
+    onUpdateFontWeight: (ReaderFontWeight) -> Unit,
     onUpdateTheme: (ReaderTheme) -> Unit,
     onSaveTags: (Set<Long>, List<String>) -> Unit,
     onMoveToFolder: (Long?, String) -> Unit,
@@ -159,7 +169,7 @@ fun ReaderScreen(
                 preferences = uiState.readerPreferences,
                 onUpdateFontFamily = onUpdateFontFamily,
                 onUpdateFontSize = onUpdateFontSize,
-                onUpdateEmphasizedWeight = onUpdateEmphasizedWeight,
+                onUpdateFontWeight = onUpdateFontWeight,
                 onUpdateTheme = onUpdateTheme,
             )
         }
@@ -233,6 +243,12 @@ fun ReaderScreen(
                             ) {
                                 DropdownMenuItem(
                                     text = { Text("Manage tags") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Label,
+                                            contentDescription = null,
+                                        )
+                                    },
                                     onClick = {
                                         showOverflowMenu = false
                                         showTagDialog = true
@@ -240,6 +256,12 @@ fun ReaderScreen(
                                 )
                                 DropdownMenuItem(
                                     text = { Text("Move to folder") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Folder,
+                                            contentDescription = null,
+                                        )
+                                    },
                                     onClick = {
                                         showOverflowMenu = false
                                         showFolderDialog = true
@@ -396,44 +418,15 @@ private fun ReaderContent(
                     style = MaterialTheme.typography.labelLarge,
                     color = colors.muted,
                 )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    AssistChip(
-                        onClick = {},
-                        label = { Text(metadata.readingTimeText) },
-                    )
-                    AssistChip(
-                        onClick = {},
-                        label = { Text(metadata.wordCountText) },
-                    )
-                    AssistChip(
-                        onClick = onOpenOriginalUrl,
-                        label = { Text(metadata.domain) },
-                    )
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    article.folder?.let { folder ->
-                        AssistChip(
-                            onClick = {},
-                            label = { Text(folder.name) },
-                        )
-                    }
-                    article.tags.forEach { tag ->
-                        AssistChip(
-                            onClick = {},
-                            label = { Text(tag.name) },
-                        )
-                    }
-                }
+                ReaderMetadataPills(
+                    metadata = metadata,
+                    colors = colors,
+                    onOpenOriginalUrl = onOpenOriginalUrl,
+                )
+                ReaderTaxonomyPills(
+                    article = article,
+                    colors = colors,
+                )
             }
         }
 
@@ -467,12 +460,110 @@ private fun ReaderContent(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ReaderMetadataPills(
+    metadata: ReaderMetadata,
+    colors: ReaderColors,
+    onOpenOriginalUrl: () -> Unit,
+) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        ReaderPill(
+            label = metadata.readingTimeText,
+            colors = colors,
+            icon = { Icon(Icons.Outlined.Schedule, contentDescription = null) },
+        )
+        ReaderPill(
+            label = metadata.wordCountText,
+            colors = colors,
+            icon = { Icon(Icons.Outlined.Article, contentDescription = null) },
+        )
+        ReaderPill(
+            label = metadata.domain,
+            colors = colors,
+            onClick = onOpenOriginalUrl,
+            icon = { Icon(Icons.Outlined.Language, contentDescription = null) },
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ReaderTaxonomyPills(
+    article: ArticleDetail,
+    colors: ReaderColors,
+) {
+    if (article.folder == null && article.tags.isEmpty()) {
+        return
+    }
+
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        article.folder?.let { folder ->
+            ReaderPill(
+                label = folder.name,
+                colors = colors,
+                icon = { Icon(Icons.Outlined.Folder, contentDescription = null) },
+            )
+        }
+        article.tags.forEach { tag ->
+            ReaderPill(
+                label = tag.name,
+                colors = colors,
+                icon = { Icon(Icons.Outlined.Label, contentDescription = null) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReaderPill(
+    label: String,
+    colors: ReaderColors,
+    icon: @Composable () -> Unit,
+    onClick: (() -> Unit)? = null,
+) {
+    Surface(
+        modifier = if (onClick == null) {
+            Modifier
+        } else {
+            Modifier.clickable(onClick = onClick)
+        },
+        shape = RoundedCornerShape(999.dp),
+        color = colors.pillContainer,
+        contentColor = colors.pillContent,
+        border = BorderStroke(1.dp, colors.pillBorder),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(modifier = Modifier.size(18.dp), contentAlignment = Alignment.Center) {
+                icon()
+            }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+    }
+}
+
 @Composable
 private fun ReaderSettingsSheet(
     preferences: ReaderPreferences,
     onUpdateFontFamily: (ReaderFontFamily) -> Unit,
     onUpdateFontSize: (Float) -> Unit,
-    onUpdateEmphasizedWeight: (Boolean) -> Unit,
+    onUpdateFontWeight: (ReaderFontWeight) -> Unit,
     onUpdateTheme: (ReaderTheme) -> Unit,
 ) {
     Column(
@@ -525,21 +616,11 @@ private fun ReaderSettingsSheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column {
-                Text("Font weight", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    text = if (preferences.useEmphasizedWeight) "Medium" else "Normal",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Switch(
-                checked = preferences.useEmphasizedWeight,
-                onCheckedChange = onUpdateEmphasizedWeight,
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Font weight", style = MaterialTheme.typography.titleMedium)
+            FontWeightDropdown(
+                selected = preferences.fontWeight,
+                onSelected = onUpdateFontWeight,
             )
         }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -572,41 +653,114 @@ private fun ReaderPreferences.asFontFamily(): FontFamily = when (fontFamily) {
     ReaderFontFamily.SYSTEM -> FontFamily.Default
     ReaderFontFamily.SERIF -> FontFamily.Serif
     ReaderFontFamily.MONO -> FontFamily.Monospace
-    ReaderFontFamily.MERRIWEATHER -> FontFamily(Font(R.font.merriweather, FontWeight.Normal))
-    ReaderFontFamily.LORA -> FontFamily(Font(R.font.lora, FontWeight.Normal))
-    ReaderFontFamily.FIRA_SANS -> FontFamily(Font(R.font.firasans, FontWeight.Normal))
-    ReaderFontFamily.INTER -> FontFamily(Font(R.font.inter, FontWeight.Normal))
+    ReaderFontFamily.MERRIWEATHER -> FontFamily(
+        Font(R.font.merriweather, FontWeight.Light),
+        Font(R.font.merriweather, FontWeight.Normal),
+        Font(R.font.merriweather, FontWeight.Bold),
+    )
+    ReaderFontFamily.LORA -> FontFamily(
+        Font(R.font.lora, FontWeight.Light),
+        Font(R.font.lora, FontWeight.Normal),
+        Font(R.font.lora, FontWeight.Bold),
+    )
+    ReaderFontFamily.FIRA_SANS -> FontFamily(
+        Font(R.font.firasans, FontWeight.Light),
+        Font(R.font.firasans, FontWeight.Normal),
+        Font(R.font.firasans, FontWeight.Bold),
+    )
+    ReaderFontFamily.INTER -> FontFamily(
+        Font(R.font.inter, FontWeight.Light),
+        Font(R.font.inter, FontWeight.Normal),
+        Font(R.font.inter, FontWeight.Bold),
+    )
 }
 
-private fun ReaderPreferences.asFontWeight(): FontWeight =
-    if (useEmphasizedWeight) FontWeight.Medium else FontWeight.Normal
+@Composable
+private fun FontWeightDropdown(
+    selected: ReaderFontWeight,
+    onSelected: (ReaderFontWeight) -> Unit,
+) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+
+    Box {
+        OutlinedButton(
+            onClick = { expanded = true },
+            shape = RoundedCornerShape(16.dp),
+        ) {
+            Icon(Icons.Outlined.Tune, contentDescription = null)
+            Text(
+                text = selected.label,
+                modifier = Modifier.padding(start = 8.dp),
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            ReaderFontWeight.entries.forEach { weight ->
+                DropdownMenuItem(
+                    text = { Text(weight.label) },
+                    onClick = {
+                        onSelected(weight)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+private fun ReaderPreferences.asFontWeight(): FontWeight = when (fontWeight) {
+    ReaderFontWeight.LIGHT -> FontWeight.Light
+    ReaderFontWeight.REGULAR -> FontWeight.Normal
+    ReaderFontWeight.BOLD -> FontWeight.Bold
+}
+
+private val ReaderFontWeight.label: String
+    get() = when (this) {
+        ReaderFontWeight.LIGHT -> "Light"
+        ReaderFontWeight.REGULAR -> "Regular"
+        ReaderFontWeight.BOLD -> "Bold"
+    }
 
 private data class ReaderColors(
     val background: Color,
     val content: Color,
     val muted: Color,
     val highlight: Color,
+    val pillContainer: Color,
+    val pillContent: Color,
+    val pillBorder: Color,
 )
 
 @Composable
 private fun readerColors(preferences: ReaderPreferences): ReaderColors = when (preferences.theme) {
     ReaderTheme.LIGHT -> ReaderColors(
-        background = MaterialTheme.colorScheme.background,
-        content = MaterialTheme.colorScheme.onBackground,
-        muted = MaterialTheme.colorScheme.onSurfaceVariant,
-        highlight = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.24f),
+        background = Color(0xFFFFFBFF),
+        content = Color(0xFF1D1B20),
+        muted = Color(0xFF625B71),
+        highlight = Color(0xFF6750A4).copy(alpha = 0.18f),
+        pillContainer = Color(0xFFF4EFFA),
+        pillContent = Color(0xFF2A2333),
+        pillBorder = Color(0xFFD7CFE4),
     )
     ReaderTheme.DARK -> ReaderColors(
         background = Color(0xFF090909),
         content = Color(0xFFF6F6F6),
         muted = Color(0xFFB5B5B5),
         highlight = Color(0xFF3F7CAC).copy(alpha = 0.36f),
+        pillContainer = Color(0xFF1D1715),
+        pillContent = Color(0xFFF3E7E2),
+        pillBorder = Color(0xFF6F534C),
     )
     ReaderTheme.PAPER -> ReaderColors(
         background = Color(0xFFF4ECD8),
         content = Color(0xFF2D2418),
         muted = Color(0xFF6C604F),
         highlight = Color(0xFFD8B25A).copy(alpha = 0.36f),
+        pillContainer = Color(0xFFECE0C7),
+        pillContent = Color(0xFF34291B),
+        pillBorder = Color(0xFFCDBB96),
     )
 }
 

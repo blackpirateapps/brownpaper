@@ -47,6 +47,7 @@ data class ArticleDetail(
 sealed interface ArticleListFilter {
     data object Inbox : ArticleListFilter
     data object Likes : ArticleListFilter
+    data object Read : ArticleListFilter
     data object Archived : ArticleListFilter
     data object Videos : ArticleListFilter
     data class FolderFilter(val folderId: Long) : ArticleListFilter
@@ -56,6 +57,7 @@ sealed interface ArticleListFilter {
 enum class ArticleListSource(val routeValue: String, val title: String) {
     Inbox("home", "Home"),
     Likes("likes", "Likes"),
+    Read("read", "Read"),
     Archived("archived", "Archived"),
     Videos("videos", "Videos"),
     Folder("folder", "Folder"),
@@ -68,4 +70,3 @@ sealed interface AddArticleResult {
     data object InvalidUrl : AddArticleResult
     data class Failure(val message: String) : AddArticleResult
 }
-

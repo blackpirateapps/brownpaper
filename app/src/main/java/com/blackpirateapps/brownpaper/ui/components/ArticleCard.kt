@@ -66,6 +66,16 @@ fun ArticleCard(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(if (isPressed) 0.97f else 1f, label = "card_scale")
+    val titleColor = if (article.isArchived) {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+    val bodyColor = if (article.isArchived) {
+        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.68f)
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
     ElevatedCard(
         modifier = modifier
@@ -79,8 +89,14 @@ fun ArticleCard(
                 indication = LocalIndication.current,
                 onClick = onClick,
             ),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.elevatedCardColors(),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = if (article.isArchived) {
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.46f)
+            } else {
+                MaterialTheme.colorScheme.surface
+            },
+        ),
         elevation = CardDefaults.elevatedCardElevation(
             defaultElevation = 2.dp,
             pressedElevation = 8.dp,
@@ -97,7 +113,7 @@ fun ArticleCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(180.dp)
-                            .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)),
+                            .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)),
                         contentScale = ContentScale.Crop,
                     )
                     if (article.isVideo) {
@@ -105,7 +121,7 @@ fun ArticleCard(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(180.dp)
-                                .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                                .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
                                 .align(Alignment.Center)
                         ) {
                             Icon(
@@ -141,6 +157,7 @@ fun ArticleCard(
                     text = article.title.highlightMatches(searchQuery, highlightColor),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
+                    color = titleColor,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -148,7 +165,7 @@ fun ArticleCard(
                     Text(
                         text = "${article.channelName} • ${article.viewCount.toReadableViews()}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = bodyColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -156,7 +173,7 @@ fun ArticleCard(
                     Text(
                         text = article.excerpt.highlightMatches(searchQuery, highlightColor),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = bodyColor,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -169,7 +186,7 @@ fun ArticleCard(
                     Text(
                         text = article.dateAdded.toReadableArticleDate(),
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = bodyColor,
                     )
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(2.dp),
