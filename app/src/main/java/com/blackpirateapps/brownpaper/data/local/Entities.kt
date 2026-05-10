@@ -43,6 +43,7 @@ data class TagEntity(
     ],
     indices = [
         Index(value = ["originalUrl"], unique = true),
+        Index(value = ["wallabagEntryId"], unique = true),
         Index(value = ["folderId"]),
     ],
 )
@@ -63,6 +64,34 @@ data class ArticleEntity(
     val channelName: String? = null,
     @ColumnInfo(defaultValue = "0") val viewCount: Long = 0L,
     @ColumnInfo(defaultValue = "0.0") val videoPositionSeconds: Float = 0f,
+    val wallabagEntryId: Long? = null,
+    val remoteUpdatedAt: Long? = null,
+    val lastSyncedAt: Long? = null,
+    @ColumnInfo(defaultValue = "0") val localModifiedAt: Long = 0L,
+)
+
+@Entity(
+    tableName = "wallabag_sync_operations",
+    foreignKeys = [
+        ForeignKey(
+            entity = ArticleEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["articleId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [
+        Index(value = ["articleId"]),
+        Index(value = ["articleId", "operationType"], unique = true),
+    ],
+)
+data class PendingSyncOperationEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val articleId: Long,
+    val operationType: String,
+    val createdAt: Long,
+    @ColumnInfo(defaultValue = "0") val attemptCount: Int = 0,
+    val lastError: String? = null,
 )
 
 @Entity(

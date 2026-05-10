@@ -9,8 +9,11 @@ import com.blackpirateapps.brownpaper.data.local.ArticleEntity
 import com.blackpirateapps.brownpaper.data.local.ArticleTagCrossRef
 import com.blackpirateapps.brownpaper.data.local.BrownPaperDao
 import com.blackpirateapps.brownpaper.data.local.FolderEntity
+import com.blackpirateapps.brownpaper.data.local.PendingSyncOperationEntity
 import com.blackpirateapps.brownpaper.data.local.TagEntity
 import com.blackpirateapps.brownpaper.data.parser.JsoupArticleParser
+import com.blackpirateapps.brownpaper.data.wallabag.WallabagSyncOperationType
+import com.blackpirateapps.brownpaper.data.wallabag.WallabagSyncScheduler
 import com.blackpirateapps.brownpaper.domain.model.AddArticleResult
 import com.blackpirateapps.brownpaper.domain.model.ArticleDetail
 import com.blackpirateapps.brownpaper.domain.model.ArticleListFilter
@@ -32,6 +35,7 @@ class ArticleRepositoryImpl @Inject constructor(
     private val dao: BrownPaperDao,
     private val parser: JsoupArticleParser,
     private val dispatchers: AppDispatchers,
+    private val wallabagSyncScheduler: WallabagSyncScheduler,
 ) : ArticleRepository {
 
     override fun observeArticles(
@@ -100,11 +104,12 @@ class ArticleRepositoryImpl @Inject constructor(
 
         runCatching {
             val parsed = parser.parse(normalizedUrl)
+            val now = System.currentTimeMillis()
             val insertedId = dao.insertArticle(
                 ArticleEntity(
                     title = parsed.title,
                     originalUrl = normalizedUrl,
-                    dateAdded = System.currentTimeMillis(),
+                    dateAdded = now,
                     extractedTextContent = parsed.extractedTextContent,
                     extractedHeroImageUrl = parsed.extractedHeroImageUrl,
                     isVideo = parsed.isVideo,
@@ -112,10 +117,12 @@ class ArticleRepositoryImpl @Inject constructor(
                     videoRuntimeText = parsed.videoRuntimeText,
                     channelName = parsed.channelName,
                     viewCount = parsed.viewCount,
+                    localModifiedAt = now,
                 ),
             )
 
             if (insertedId > 0) {
+                enqueueSync(insertedId, WallabagSyncOperationType.UPSERT_ENTRY)
                 AddArticleResult.Success(insertedId)
             } else {
                 AddArticleResult.AlreadySaved(dao.getArticleByUrl(normalizedUrl)?.id)
@@ -127,13 +134,15 @@ class ArticleRepositoryImpl @Inject constructor(
 
     override suspend fun toggleLiked(articleId: Long) {
         withContext(dispatchers.io) {
-            dao.toggleLiked(articleId)
+            dao.toggleLiked(articleId, System.currentTimeMillis())
+            enqueueSync(articleId, WallabagSyncOperationType.UPDATE_ENTRY)
         }
     }
 
     override suspend fun setArchived(articleId: Long, archived: Boolean) {
         withContext(dispatchers.io) {
-            dao.setArchived(articleId, archived)
+            dao.setArchived(articleId, archived, System.currentTimeMillis())
+            enqueueSync(articleId, WallabagSyncOperationType.UPDATE_ENTRY)
         }
     }
 
@@ -167,6 +176,8 @@ class ArticleRepositoryImpl @Inject constructor(
                     resolvedTagIds.map { tagId -> ArticleTagCrossRef(articleId = articleId, tagId = tagId) },
                 )
             }
+            dao.touchArticleLocalModifiedAt(articleId, System.currentTimeMillis())
+            enqueueSync(articleId, WallabagSyncOperationType.UPDATE_ENTRY)
         }
     }
 
@@ -291,4 +302,15 @@ class ArticleRepositoryImpl @Inject constructor(
         id = id,
         name = name,
     )
+
+    private suspend fun enqueueSync(articleId: Long, operationType: WallabagSyncOperationType) {
+        dao.insertPendingSyncOperation(
+            PendingSyncOperationEntity(
+                articleId = articleId,
+                operationType = operationType.name,
+                createdAt = System.currentTimeMillis(),
+            ),
+        )
+        wallabagSyncScheduler.schedule()
+    }
 }

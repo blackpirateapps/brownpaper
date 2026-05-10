@@ -27,8 +27,18 @@ interface BrownPaperDao {
     @Query("SELECT * FROM articles WHERE id = :articleId LIMIT 1")
     suspend fun getArticleById(articleId: Long): ArticleEntity?
 
+    @Transaction
+    @Query("SELECT * FROM articles WHERE id = :articleId LIMIT 1")
+    suspend fun getArticleWithRelationsById(articleId: Long): ArticleWithRelations?
+
     @Query("SELECT * FROM articles WHERE originalUrl = :originalUrl LIMIT 1")
     suspend fun getArticleByUrl(originalUrl: String): ArticleEntity?
+
+    @Query("SELECT * FROM articles WHERE wallabagEntryId = :wallabagEntryId LIMIT 1")
+    suspend fun getArticleByWallabagEntryId(wallabagEntryId: Long): ArticleEntity?
+
+    @Query("SELECT * FROM articles WHERE wallabagEntryId IS NULL")
+    suspend fun getArticlesWithoutWallabagEntryId(): List<ArticleEntity>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertArticle(article: ArticleEntity): Long
@@ -36,14 +46,15 @@ interface BrownPaperDao {
     @Query(
         """
         UPDATE articles
-        SET isLiked = CASE WHEN isLiked = 1 THEN 0 ELSE 1 END
+        SET isLiked = CASE WHEN isLiked = 1 THEN 0 ELSE 1 END,
+            localModifiedAt = :modifiedAt
         WHERE id = :articleId
         """,
     )
-    suspend fun toggleLiked(articleId: Long)
+    suspend fun toggleLiked(articleId: Long, modifiedAt: Long)
 
-    @Query("UPDATE articles SET isArchived = :archived WHERE id = :articleId")
-    suspend fun setArchived(articleId: Long, archived: Boolean)
+    @Query("UPDATE articles SET isArchived = :archived, localModifiedAt = :modifiedAt WHERE id = :articleId")
+    suspend fun setArchived(articleId: Long, archived: Boolean, modifiedAt: Long)
 
     @Query("UPDATE articles SET folderId = :folderId WHERE id = :articleId")
     suspend fun moveToFolder(articleId: Long, folderId: Long?)
@@ -51,8 +62,95 @@ interface BrownPaperDao {
     @Query("UPDATE articles SET videoPositionSeconds = :position WHERE id = :articleId")
     suspend fun updateVideoPosition(articleId: Long, position: Float)
 
+    @Query("UPDATE articles SET localModifiedAt = :modifiedAt WHERE id = :articleId")
+    suspend fun touchArticleLocalModifiedAt(articleId: Long, modifiedAt: Long)
+
     @Query("DELETE FROM articles WHERE id = :articleId")
     suspend fun deleteArticle(articleId: Long)
+
+    @Query(
+        """
+        UPDATE articles
+        SET wallabagEntryId = :wallabagEntryId,
+            remoteUpdatedAt = :remoteUpdatedAt,
+            lastSyncedAt = :lastSyncedAt
+        WHERE id = :articleId
+        """,
+    )
+    suspend fun updateWallabagMetadata(
+        articleId: Long,
+        wallabagEntryId: Long?,
+        remoteUpdatedAt: Long?,
+        lastSyncedAt: Long?,
+    )
+
+    @Query(
+        """
+        UPDATE articles
+        SET title = :title,
+            originalUrl = :originalUrl,
+            dateAdded = :dateAdded,
+            isLiked = :isLiked,
+            isArchived = :isArchived,
+            extractedTextContent = :extractedTextContent,
+            extractedHeroImageUrl = :extractedHeroImageUrl,
+            wallabagEntryId = :wallabagEntryId,
+            remoteUpdatedAt = :remoteUpdatedAt,
+            lastSyncedAt = :lastSyncedAt,
+            localModifiedAt = :localModifiedAt
+        WHERE id = :articleId
+        """,
+    )
+    suspend fun updateArticleFromWallabag(
+        articleId: Long,
+        title: String,
+        originalUrl: String,
+        dateAdded: Long,
+        isLiked: Boolean,
+        isArchived: Boolean,
+        extractedTextContent: String,
+        extractedHeroImageUrl: String?,
+        wallabagEntryId: Long,
+        remoteUpdatedAt: Long?,
+        lastSyncedAt: Long,
+        localModifiedAt: Long,
+    )
+
+    @Query(
+        """
+        UPDATE articles
+        SET title = :title,
+            originalUrl = :originalUrl,
+            dateAdded = :dateAdded,
+            extractedTextContent = :extractedTextContent,
+            extractedHeroImageUrl = :extractedHeroImageUrl,
+            wallabagEntryId = :wallabagEntryId,
+            remoteUpdatedAt = :remoteUpdatedAt,
+            lastSyncedAt = :lastSyncedAt
+        WHERE id = :articleId
+        """,
+    )
+    suspend fun updateArticleContentFromWallabagKeepingLocalState(
+        articleId: Long,
+        title: String,
+        originalUrl: String,
+        dateAdded: Long,
+        extractedTextContent: String,
+        extractedHeroImageUrl: String?,
+        wallabagEntryId: Long,
+        remoteUpdatedAt: Long?,
+        lastSyncedAt: Long,
+    )
+
+    @Query(
+        """
+        UPDATE articles
+        SET wallabagEntryId = NULL,
+            remoteUpdatedAt = NULL,
+            lastSyncedAt = NULL
+        """,
+    )
+    suspend fun clearWallabagMetadata()
 
     @Query("DELETE FROM article_tag_cross_ref WHERE articleId = :articleId")
     suspend fun clearTags(articleId: Long)
@@ -91,6 +189,34 @@ interface BrownPaperDao {
     suspend fun getAllTagCrossRefs(): List<ArticleTagCrossRef>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPendingSyncOperation(operation: PendingSyncOperationEntity)
+
+    @Query("SELECT * FROM wallabag_sync_operations ORDER BY createdAt ASC")
+    suspend fun getPendingSyncOperations(): List<PendingSyncOperationEntity>
+
+    @Query("SELECT COUNT(*) FROM wallabag_sync_operations WHERE articleId = :articleId")
+    suspend fun countPendingSyncOperations(articleId: Long): Int
+
+    @Query("DELETE FROM wallabag_sync_operations WHERE id = :operationId")
+    suspend fun deletePendingSyncOperation(operationId: Long)
+
+    @Query("DELETE FROM wallabag_sync_operations WHERE articleId = :articleId")
+    suspend fun deletePendingSyncOperationsForArticle(articleId: Long)
+
+    @Query("DELETE FROM wallabag_sync_operations")
+    suspend fun deleteAllPendingSyncOperations()
+
+    @Query(
+        """
+        UPDATE wallabag_sync_operations
+        SET attemptCount = attemptCount + 1,
+            lastError = :message
+        WHERE id = :operationId
+        """,
+    )
+    suspend fun markPendingSyncOperationFailed(operationId: Long, message: String)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertArticles(articles: List<ArticleEntity>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -108,4 +234,3 @@ interface BrownPaperDao {
     @Query("DELETE FROM tags")
     suspend fun deleteAllTags()
 }
-

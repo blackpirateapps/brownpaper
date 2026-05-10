@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.blackpirateapps.brownpaper.core.di.ReaderPreferencesStore
 import com.blackpirateapps.brownpaper.core.model.ReaderFontFamily
 import com.blackpirateapps.brownpaper.core.model.ReaderPreferences
 import com.blackpirateapps.brownpaper.core.model.ReaderTheme
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 class ReaderPreferencesRepositoryImpl @Inject constructor(
+    @ReaderPreferencesStore
     private val dataStore: DataStore<Preferences>,
 ) : ReaderPreferencesRepository {
 
@@ -51,4 +53,3 @@ class ReaderPreferencesRepositoryImpl @Inject constructor(
         val ThemeKey = stringPreferencesKey("theme")
     }
 }
-
