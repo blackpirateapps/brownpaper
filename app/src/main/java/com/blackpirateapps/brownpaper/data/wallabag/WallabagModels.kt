@@ -2,6 +2,7 @@ package com.blackpirateapps.brownpaper.data.wallabag
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
 data class WallabagSession(
     val host: String,
@@ -94,6 +95,7 @@ data class WallabagEntryDto(
     @SerialName("is_archived") val isArchived: Int = 0,
     @SerialName("is_starred") val isStarred: Int = 0,
     val tags: List<WallabagTagDto> = emptyList(),
+    val annotations: List<WallabagAnnotationDto> = emptyList(),
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
 )
@@ -103,6 +105,23 @@ data class WallabagTagDto(
     val id: Long? = null,
     val label: String? = null,
     val slug: String? = null,
+)
+
+@Serializable
+data class WallabagAnnotationDto(
+    val id: JsonElement? = null,
+    @SerialName("entry_id") val entryId: JsonElement? = null,
+    val quote: JsonElement? = null,
+    val text: JsonElement? = null,
+    val ranges: JsonElement? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null,
+)
+
+data class LocalWallabagAnnotation(
+    val quote: String,
+    val text: String,
+    val rangesJson: String,
 )
 
 data class WallabagRemoteEntry(
@@ -134,4 +153,10 @@ sealed interface WallabagSyncResult {
 enum class WallabagSyncOperationType {
     UPSERT_ENTRY,
     UPDATE_ENTRY,
+}
+
+enum class WallabagAnnotationSyncOperationType {
+    CREATE,
+    UPDATE,
+    DELETE,
 }

@@ -107,6 +107,74 @@ data class PendingWallabagDeleteOperationEntity(
 )
 
 @Entity(
+    tableName = "article_annotations",
+    foreignKeys = [
+        ForeignKey(
+            entity = ArticleEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["articleId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [
+        Index(value = ["articleId"]),
+        Index(value = ["wallabagAnnotationId"], unique = true),
+        Index(value = ["wallabagEntryId"]),
+        Index(value = ["articleId", "deletedAt"]),
+    ],
+)
+@Serializable
+data class ArticleAnnotationEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val articleId: Long,
+    val wallabagAnnotationId: String? = null,
+    val wallabagEntryId: Long? = null,
+    val quote: String,
+    val noteText: String,
+    val colorHex: String,
+    val wallabagRangesJson: String,
+    val startParagraphIndex: Int,
+    val endParagraphIndex: Int,
+    val startCharOffset: Int,
+    val endCharOffset: Int,
+    val prefixText: String? = null,
+    val suffixText: String? = null,
+    val bodyTextHash: String? = null,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val remoteUpdatedAt: Long? = null,
+    val lastSyncedAt: Long? = null,
+    val deletedAt: Long? = null,
+)
+
+@Entity(
+    tableName = "wallabag_annotation_sync_operations",
+    foreignKeys = [
+        ForeignKey(
+            entity = ArticleEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["articleId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [
+        Index(value = ["articleId"]),
+        Index(value = ["annotationId"]),
+        Index(value = ["wallabagAnnotationId"]),
+    ],
+)
+data class PendingWallabagAnnotationOperationEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val articleId: Long,
+    val annotationId: Long? = null,
+    val wallabagAnnotationId: String? = null,
+    val operationType: String,
+    val createdAt: Long,
+    @ColumnInfo(defaultValue = "0") val attemptCount: Int = 0,
+    val lastError: String? = null,
+)
+
+@Entity(
     tableName = "article_tag_cross_ref",
     primaryKeys = ["articleId", "tagId"],
     foreignKeys = [
@@ -162,5 +230,6 @@ data class BackupData(
     val articles: List<ArticleEntity>,
     val folders: List<FolderEntity>,
     val tags: List<TagEntity>,
-    val tagCrossRefs: List<ArticleTagCrossRef>
+    val tagCrossRefs: List<ArticleTagCrossRef>,
+    val annotations: List<ArticleAnnotationEntity> = emptyList(),
 )

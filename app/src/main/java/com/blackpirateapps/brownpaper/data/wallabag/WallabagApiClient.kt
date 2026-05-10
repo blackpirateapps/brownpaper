@@ -5,9 +5,13 @@ import javax.inject.Singleton
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
@@ -161,17 +165,69 @@ class WallabagApiClient @Inject constructor(
         }
     }
 
+    suspend fun getAnnotations(session: WallabagSession, entryId: Long): List<WallabagAnnotationDto> {
+        val response: JsonElement = executeJson(
+            authorizedRequest(
+                session = session,
+                method = "GET",
+                path = "/api/annotations/$entryId",
+            ),
+        )
+        return parseAnnotationsResponse(response)
+    }
+
+    suspend fun createAnnotation(
+        session: WallabagSession,
+        entryId: Long,
+        annotation: LocalWallabagAnnotation,
+    ): WallabagAnnotationDto = executeJson(
+        authorizedRequest(
+            session = session,
+            method = "POST",
+            path = "/api/annotations/$entryId",
+            jsonBody = annotation.asWallabagAnnotationJson(),
+        ),
+    )
+
+    suspend fun updateAnnotation(
+        session: WallabagSession,
+        annotationId: String,
+        annotation: LocalWallabagAnnotation,
+    ): WallabagAnnotationDto = executeJson(
+        authorizedRequest(
+            session = session,
+            method = "PUT",
+            path = "/api/annotations/$annotationId",
+            jsonBody = annotation.asWallabagAnnotationJson(),
+        ),
+    )
+
+    suspend fun deleteAnnotation(session: WallabagSession, annotationId: String) {
+        val response = transport.execute(
+            authorizedRequest(
+                session = session,
+                method = "DELETE",
+                path = "/api/annotations/$annotationId",
+            ),
+        )
+        if (!response.isSuccessful) {
+            throw WallabagApiException(response.code, response.body.ifBlank { "wallabag request failed" })
+        }
+    }
+
     private fun authorizedRequest(
         session: WallabagSession,
         method: String,
         path: String,
         query: Map<String, String> = emptyMap(),
         form: Map<String, String> = emptyMap(),
+        jsonBody: String? = null,
     ): WallabagHttpRequest = WallabagHttpRequest(
         method = method,
         url = buildUrl(session.host, path, query),
         headers = mapOf("Authorization" to "Bearer ${session.accessToken}"),
         form = form,
+        jsonBody = jsonBody,
     )
 
     private suspend inline fun <reified T> executeJson(request: WallabagHttpRequest): T {
@@ -208,6 +264,21 @@ class WallabagApiClient @Inject constructor(
         obj["entry"]?.jsonPrimitiveOrNull()?.longOrNull?.let { return it }
         return null
     }
+
+    private fun parseAnnotationsResponse(response: JsonElement): List<WallabagAnnotationDto> {
+        response.jsonArrayOrNull()?.let { array ->
+            return array.map { WallabagJson.decodeFromJsonElementCompat(it) }
+        }
+
+        val obj = response.jsonObjectOrNull() ?: return emptyList()
+        val array = obj["annotations"]?.jsonArrayOrNull()
+            ?: obj["items"]?.jsonArrayOrNull()
+            ?: obj["_embedded"]?.jsonObjectOrNull()?.get("annotations")?.jsonArrayOrNull()
+            ?: obj["_embedded"]?.jsonObjectOrNull()?.get("items")?.jsonArrayOrNull()
+            ?: return emptyList()
+
+        return array.map { WallabagJson.decodeFromJsonElementCompat(it) }
+    }
 }
 
 private val WallabagJson = Json {
@@ -238,6 +309,19 @@ private fun LocalWallabagArticle.asWallabagForm(includeContent: Boolean = true):
     previewPicture?.takeIf(String::isNotBlank)?.let { put("preview_picture", it) }
 }
 
+private fun LocalWallabagAnnotation.asWallabagAnnotationJson(): String {
+    val ranges = runCatching { WallabagJson.parseToJsonElement(rangesJson) }
+        .getOrElse { JsonArray(emptyList()) }
+    val body = JsonObject(
+        mapOf(
+            "ranges" to ranges,
+            "quote" to JsonArray(listOf(JsonPrimitive(quote))),
+            "text" to JsonArray(listOf(JsonPrimitive(text))),
+        ),
+    )
+    return body.toString()
+}
+
 class WallabagApiException(
     val code: Int,
     override val message: String,
@@ -247,3 +331,8 @@ class WallabagApiException(
 private fun JsonElement.jsonPrimitiveOrNull() = runCatching { jsonPrimitive }.getOrNull()
 
 private fun JsonElement.jsonObjectOrNull() = runCatching { jsonObject }.getOrNull()
+
+private fun JsonElement.jsonArrayOrNull() = runCatching { jsonArray }.getOrNull()
+
+private inline fun <reified T> Json.decodeFromJsonElementCompat(element: JsonElement): T =
+    decodeFromString(element.toString())

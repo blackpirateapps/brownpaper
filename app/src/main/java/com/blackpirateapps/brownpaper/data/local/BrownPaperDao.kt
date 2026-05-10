@@ -208,6 +208,154 @@ interface BrownPaperDao {
 
     @Query(
         """
+        SELECT * FROM article_annotations
+        WHERE articleId = :articleId AND deletedAt IS NULL
+        ORDER BY startParagraphIndex ASC, startCharOffset ASC, createdAt ASC
+        """,
+    )
+    fun observeAnnotations(articleId: Long): Flow<List<ArticleAnnotationEntity>>
+
+    @Query("SELECT * FROM article_annotations WHERE id = :annotationId LIMIT 1")
+    suspend fun getAnnotationById(annotationId: Long): ArticleAnnotationEntity?
+
+    @Query("SELECT * FROM article_annotations WHERE wallabagAnnotationId = :wallabagAnnotationId LIMIT 1")
+    suspend fun getAnnotationByWallabagId(wallabagAnnotationId: String): ArticleAnnotationEntity?
+
+    @Query("SELECT * FROM article_annotations WHERE articleId = :articleId")
+    suspend fun getAnnotationsForArticleIncludingDeleted(articleId: Long): List<ArticleAnnotationEntity>
+
+    @Query(
+        """
+        SELECT * FROM article_annotations
+        WHERE articleId = :articleId AND wallabagAnnotationId IS NOT NULL AND deletedAt IS NULL
+        """,
+    )
+    suspend fun getRemoteAnnotationsForArticle(articleId: Long): List<ArticleAnnotationEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAnnotation(annotation: ArticleAnnotationEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAnnotations(annotations: List<ArticleAnnotationEntity>)
+
+    @Query(
+        """
+        UPDATE article_annotations
+        SET noteText = :noteText,
+            colorHex = :colorHex,
+            updatedAt = :updatedAt,
+            wallabagRangesJson = :wallabagRangesJson,
+            startParagraphIndex = :startParagraphIndex,
+            endParagraphIndex = :endParagraphIndex,
+            startCharOffset = :startCharOffset,
+            endCharOffset = :endCharOffset,
+            prefixText = :prefixText,
+            suffixText = :suffixText,
+            bodyTextHash = :bodyTextHash
+        WHERE id = :annotationId
+        """,
+    )
+    suspend fun updateAnnotationLocal(
+        annotationId: Long,
+        noteText: String,
+        colorHex: String,
+        updatedAt: Long,
+        wallabagRangesJson: String,
+        startParagraphIndex: Int,
+        endParagraphIndex: Int,
+        startCharOffset: Int,
+        endCharOffset: Int,
+        prefixText: String?,
+        suffixText: String?,
+        bodyTextHash: String?,
+    )
+
+    @Query(
+        """
+        UPDATE article_annotations
+        SET wallabagAnnotationId = :wallabagAnnotationId,
+            wallabagEntryId = :wallabagEntryId,
+            wallabagRangesJson = :wallabagRangesJson,
+            remoteUpdatedAt = :remoteUpdatedAt,
+            lastSyncedAt = :lastSyncedAt,
+            deletedAt = NULL
+        WHERE id = :annotationId
+        """,
+    )
+    suspend fun updateAnnotationRemoteMetadata(
+        annotationId: Long,
+        wallabagAnnotationId: String?,
+        wallabagEntryId: Long?,
+        wallabagRangesJson: String,
+        remoteUpdatedAt: Long?,
+        lastSyncedAt: Long?,
+    )
+
+    @Query(
+        """
+        UPDATE article_annotations
+        SET deletedAt = :deletedAt,
+            updatedAt = :deletedAt
+        WHERE id = :annotationId
+        """,
+    )
+    suspend fun tombstoneAnnotation(annotationId: Long, deletedAt: Long)
+
+    @Query("DELETE FROM article_annotations WHERE id = :annotationId")
+    suspend fun deleteAnnotationById(annotationId: Long)
+
+    @Query(
+        """
+        UPDATE article_annotations
+        SET wallabagAnnotationId = NULL,
+            wallabagEntryId = NULL,
+            remoteUpdatedAt = NULL,
+            lastSyncedAt = NULL
+        """,
+    )
+    suspend fun clearWallabagAnnotationMetadata()
+
+    @Query("SELECT COUNT(*) FROM wallabag_annotation_sync_operations WHERE annotationId = :annotationId")
+    suspend fun countPendingAnnotationOperations(annotationId: Long): Int
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPendingWallabagAnnotationOperation(operation: PendingWallabagAnnotationOperationEntity)
+
+    @Query("SELECT * FROM wallabag_annotation_sync_operations ORDER BY createdAt ASC")
+    suspend fun getPendingWallabagAnnotationOperations(): List<PendingWallabagAnnotationOperationEntity>
+
+    @Query(
+        """
+        SELECT * FROM wallabag_annotation_sync_operations
+        WHERE articleId = :articleId
+        ORDER BY createdAt ASC
+        """,
+    )
+    suspend fun getPendingWallabagAnnotationOperationsForArticle(
+        articleId: Long,
+    ): List<PendingWallabagAnnotationOperationEntity>
+
+    @Query("DELETE FROM wallabag_annotation_sync_operations WHERE id = :operationId")
+    suspend fun deletePendingWallabagAnnotationOperation(operationId: Long)
+
+    @Query("DELETE FROM wallabag_annotation_sync_operations WHERE annotationId = :annotationId")
+    suspend fun deletePendingAnnotationOperationsForAnnotation(annotationId: Long)
+
+    @Query("DELETE FROM wallabag_annotation_sync_operations")
+    suspend fun deleteAllPendingWallabagAnnotationOperations()
+
+    @Query(
+        """
+        UPDATE wallabag_annotation_sync_operations
+        SET attemptCount = attemptCount + 1,
+            lastError = :message
+        WHERE id = :operationId
+        """,
+    )
+    suspend fun markPendingWallabagAnnotationOperationFailed(operationId: Long, message: String)
+
+    @Query(
+        """
         UPDATE wallabag_delete_operations
         SET attemptCount = attemptCount + 1,
             lastError = :message
@@ -255,4 +403,7 @@ interface BrownPaperDao {
 
     @Query("DELETE FROM tags")
     suspend fun deleteAllTags()
+
+    @Query("DELETE FROM article_annotations")
+    suspend fun deleteAllAnnotations()
 }

@@ -5,14 +5,18 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
 data class WallabagHttpRequest(
     val method: String,
     val url: String,
     val headers: Map<String, String> = emptyMap(),
     val form: Map<String, String> = emptyMap(),
+    val jsonBody: String? = null,
 )
 
 data class WallabagHttpResponse(
@@ -32,18 +36,17 @@ class OkHttpWallabagTransport @Inject constructor(
     private val dispatchers: AppDispatchers,
 ) : WallabagHttpTransport {
     override suspend fun execute(request: WallabagHttpRequest): WallabagHttpResponse = withContext(dispatchers.io) {
-        val formBody = FormBody.Builder().apply {
-            request.form.forEach { (key, value) -> add(key, value) }
-        }.build()
+        val requestBody = request.body()
 
         val builder = Request.Builder().url(request.url)
         request.headers.forEach { (key, value) -> builder.header(key, value) }
 
         when (request.method.uppercase()) {
             "GET" -> builder.get()
-            "POST" -> builder.post(formBody)
-            "PATCH" -> builder.patch(formBody)
-            "DELETE" -> builder.delete(if (request.form.isEmpty()) null else formBody)
+            "POST" -> builder.post(requestBody ?: emptyBody())
+            "PUT" -> builder.put(requestBody ?: emptyBody())
+            "PATCH" -> builder.patch(requestBody ?: emptyBody())
+            "DELETE" -> builder.delete(requestBody)
             else -> error("Unsupported method: ${request.method}")
         }
 
@@ -54,4 +57,18 @@ class OkHttpWallabagTransport @Inject constructor(
             )
         }
     }
+
+    private fun WallabagHttpRequest.body(): RequestBody? {
+        jsonBody?.let { json ->
+            return json.toRequestBody("application/json; charset=utf-8".toMediaType())
+        }
+        if (form.isEmpty()) {
+            return null
+        }
+        return FormBody.Builder().apply {
+            form.forEach { (key, value) -> add(key, value) }
+        }.build()
+    }
+
+    private fun emptyBody(): RequestBody = ByteArray(0).toRequestBody(null)
 }

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
@@ -89,6 +90,12 @@ fun BrownPaperDrawerContent(
                 icon = Icons.Outlined.CheckCircle,
                 selected = currentSource == ArticleListSource.Read,
                 onClick = { onSelectSource(ArticleListSource.Read, null) },
+            )
+            DrawerItem(
+                label = "Archived",
+                icon = Icons.Outlined.Archive,
+                selected = currentSource == ArticleListSource.Archived,
+                onClick = { onSelectSource(ArticleListSource.Archived, null) },
             )
             DrawerItem(
                 label = "Videos",

@@ -15,13 +15,13 @@ BrownPaper is an offline-first Android "read later" app built in Kotlin with Jet
 - `app/src/main/java/com/blackpirateapps/brownpaper/ui`
   - `navigation`: app shell, drawer routing, and NavHost.
   - `shell`: global ingestion state, drawer data, and wallabag sync action state.
-  - `home`: Searchable article lists. `ArticleListViewModel` is reactive to `SavedStateHandle` changes, allowing seamless source switching (Inbox, Likes, Read, Tags, Folders), and exposes quick article actions.
+  - `home`: Searchable article lists. `ArticleListViewModel` is reactive to `SavedStateHandle` changes, allowing seamless source switching (Inbox, Likes, Read, Archived, Tags, Folders), and exposes quick article actions.
   - `reader`: Native reading screen with `SelectionContainer` for text copying. Supports custom fonts (Merriweather, Lora, Fira Sans, Inter), explicit reader themes, dropdown font weights, and article metadata.
   - `settings`: Backup/restore plus wallabag login, host switching, client credentials fallback, manual sync, and disconnect actions.
   - `components`: shared cards, dialogs, and drawer content.
 
 ## Important behavior
-- **Navigation:** Sidebar selection (Likes, Read, Videos, Tags, Folders) correctly updates the feed because `ArticleListViewModel` observes navigation arguments reactively. A wallabag sync action appears in the drawer when an account is connected.
+- **Navigation:** Sidebar selection (Likes, Read, Archived, Videos, Tags, Folders) correctly updates the feed because `ArticleListViewModel` observes navigation arguments reactively. A wallabag sync action appears in the drawer when an account is connected.
 - **Search:** The home screen search bar is now a collapsible icon in the `TopAppBar` with animated expansion and focus management.
 - **Article cards:** Homepage cards only render media when an article has a hero image. Quick actions are available on each card for favorite, archive/unarchive, mark as read, and delete. Read/archived cards are visually muted, and tag feeds include read articles instead of filtering them out.
 - **Reader metadata:** The reader header shows reader-theme-aware icon pills for estimated reading time, word count, and the source domain. The domain opens the full original URL.

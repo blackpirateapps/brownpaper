@@ -12,6 +12,7 @@ import com.blackpirateapps.brownpaper.core.model.AppDispatchers
 import com.blackpirateapps.brownpaper.data.local.BrownPaperDao
 import com.blackpirateapps.brownpaper.data.local.BrownPaperDatabase
 import com.blackpirateapps.brownpaper.data.preferences.ReaderPreferencesRepositoryImpl
+import com.blackpirateapps.brownpaper.data.repository.AnnotationRepositoryImpl
 import com.blackpirateapps.brownpaper.data.repository.ArticleRepositoryImpl
 import com.blackpirateapps.brownpaper.data.wallabag.AndroidKeystoreWallabagSecretBox
 import com.blackpirateapps.brownpaper.data.wallabag.OkHttpWallabagTransport
@@ -20,6 +21,7 @@ import com.blackpirateapps.brownpaper.data.wallabag.WallabagRepositoryImpl
 import com.blackpirateapps.brownpaper.data.wallabag.WallabagSecretBox
 import com.blackpirateapps.brownpaper.data.wallabag.WallabagSyncScheduler
 import com.blackpirateapps.brownpaper.data.wallabag.WorkManagerWallabagSyncScheduler
+import com.blackpirateapps.brownpaper.domain.repository.AnnotationRepository
 import com.blackpirateapps.brownpaper.domain.repository.ArticleRepository
 import com.blackpirateapps.brownpaper.domain.repository.ReaderPreferencesRepository
 import com.blackpirateapps.brownpaper.domain.repository.WallabagRepository
@@ -39,7 +41,11 @@ object AppModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): BrownPaperDatabase = Room
         .databaseBuilder(context, BrownPaperDatabase::class.java, "brownpaper.db")
-        .addMigrations(BrownPaperDatabase.Migration2To3, BrownPaperDatabase.Migration3To4)
+        .addMigrations(
+            BrownPaperDatabase.Migration2To3,
+            BrownPaperDatabase.Migration3To4,
+            BrownPaperDatabase.Migration4To5,
+        )
         .build()
 
     @Provides
@@ -76,6 +82,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindArticleRepository(impl: ArticleRepositoryImpl): ArticleRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAnnotationRepository(impl: AnnotationRepositoryImpl): AnnotationRepository
 
     @Binds
     @Singleton

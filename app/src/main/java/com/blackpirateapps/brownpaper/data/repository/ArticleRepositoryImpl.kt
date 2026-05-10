@@ -232,7 +232,10 @@ class ArticleRepositoryImpl @Inject constructor(
             articles = dao.getAllArticles(),
             folders = dao.getAllFolders(),
             tags = dao.getAllTags(),
-            tagCrossRefs = dao.getAllTagCrossRefs()
+            tagCrossRefs = dao.getAllTagCrossRefs(),
+            annotations = dao.getAllArticles().flatMap { article ->
+                dao.getAnnotationsForArticleIncludingDeleted(article.id)
+            },
         )
         Json.encodeToString(data)
     }
@@ -244,11 +247,13 @@ class ArticleRepositoryImpl @Inject constructor(
             dao.deleteAllArticles()
             dao.deleteAllFolders()
             dao.deleteAllTags()
+            dao.deleteAllAnnotations()
             
             dao.insertFolders(data.folders)
             dao.insertTags(data.tags)
             dao.insertArticles(data.articles)
             dao.insertTagCrossRefs(data.tagCrossRefs)
+            dao.insertAnnotations(data.annotations)
         }
     }
 
