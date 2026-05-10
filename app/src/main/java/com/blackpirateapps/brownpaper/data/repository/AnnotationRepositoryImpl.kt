@@ -247,7 +247,7 @@ private fun joinedRangeToAnchor(paragraphs: List<String>, globalStart: Int, glob
     var startOffset = 0
     var endOffset = 0
 
-    paragraphs.forEachIndexed { index, paragraph ->
+    for ((index, paragraph) in paragraphs.withIndex()) {
         val paragraphStart = cursor
         val paragraphEnd = cursor + paragraph.length
         if (globalStart in paragraphStart..paragraphEnd) {
@@ -257,7 +257,7 @@ private fun joinedRangeToAnchor(paragraphs: List<String>, globalStart: Int, glob
         if (globalEnd in paragraphStart..paragraphEnd) {
             endParagraph = index
             endOffset = (globalEnd - paragraphStart).coerceIn(0, paragraph.length)
-            return@forEachIndexed
+            break
         }
         cursor = paragraphEnd + 2
     }

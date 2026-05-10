@@ -273,6 +273,7 @@ class WallabagApiClient @Inject constructor(
         val obj = response.jsonObjectOrNull() ?: return emptyList()
         val array = obj["annotations"]?.jsonArrayOrNull()
             ?: obj["items"]?.jsonArrayOrNull()
+            ?: obj["rows"]?.jsonArrayOrNull()
             ?: obj["_embedded"]?.jsonObjectOrNull()?.get("annotations")?.jsonArrayOrNull()
             ?: obj["_embedded"]?.jsonObjectOrNull()?.get("items")?.jsonArrayOrNull()
             ?: return emptyList()

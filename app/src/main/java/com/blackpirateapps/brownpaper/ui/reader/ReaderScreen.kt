@@ -5,6 +5,8 @@ import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
@@ -16,11 +18,14 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -34,20 +39,24 @@ import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Label
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.Notes
 import androidx.compose.material.icons.outlined.OpenInBrowser
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
@@ -67,21 +76,29 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextLayoutResult
 import coil3.compose.AsyncImage
 import com.blackpirateapps.brownpaper.R
 import com.blackpirateapps.brownpaper.core.model.ReaderFontFamily
 import com.blackpirateapps.brownpaper.core.model.ReaderFontWeight
 import com.blackpirateapps.brownpaper.core.model.ReaderPreferences
 import com.blackpirateapps.brownpaper.core.model.ReaderTheme
-import com.blackpirateapps.brownpaper.core.util.highlightMatches
 import com.blackpirateapps.brownpaper.core.util.toReadableArticleDate
+import com.blackpirateapps.brownpaper.domain.model.AnnotationAnchor
+import com.blackpirateapps.brownpaper.domain.model.AnnotationColor
+import com.blackpirateapps.brownpaper.domain.model.AnnotationSyncState
+import com.blackpirateapps.brownpaper.domain.model.ArticleAnnotation
 import com.blackpirateapps.brownpaper.domain.model.ArticleDetail
 import com.blackpirateapps.brownpaper.ui.components.ManageTagsDialog
 import com.blackpirateapps.brownpaper.ui.components.MoveToFolderDialog
@@ -106,6 +123,10 @@ fun ReaderScreen(
     onSearchInArticle: (String) -> Unit,
     onUpdateVideoPosition: (Float) -> Unit,
     onDeleteArticle: () -> Unit,
+    onCreateAnnotation: (AnnotationAnchor, String, String, AnnotationColor) -> Unit,
+    onUpdateAnnotation: (Long, String, AnnotationColor) -> Unit,
+    onDeleteAnnotation: (Long) -> Unit,
+    onSyncAnnotations: () -> Unit,
     onDeleted: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -116,6 +137,10 @@ fun ReaderScreen(
     var showTagDialog by rememberSaveable { mutableStateOf(false) }
     var showFolderDialog by rememberSaveable { mutableStateOf(false) }
     var showSearchDialog by rememberSaveable { mutableStateOf(false) }
+    var showAnnotationsSheet by rememberSaveable { mutableStateOf(false) }
+    var annotationDraft by remember { mutableStateOf<AnnotationDraftState?>(null) }
+    var editingAnnotation by remember { mutableStateOf<ArticleAnnotation?>(null) }
+    var jumpToParagraphIndex by remember { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(events) {
         events.collect { event ->
@@ -175,6 +200,68 @@ fun ReaderScreen(
         }
     }
 
+    annotationDraft?.let { draft ->
+        ModalBottomSheet(
+            onDismissRequest = { annotationDraft = null },
+        ) {
+            AnnotationEditorSheet(
+                title = "New annotation",
+                initialNote = draft.noteText,
+                initialColor = draft.color,
+                quote = draft.quote,
+                colors = readerColors,
+                onDismiss = { annotationDraft = null },
+                onSave = { note, color ->
+                    onCreateAnnotation(draft.anchor, draft.quote, note, color)
+                    annotationDraft = null
+                },
+            )
+        }
+    }
+
+    editingAnnotation?.let { annotation ->
+        ModalBottomSheet(
+            onDismissRequest = { editingAnnotation = null },
+        ) {
+            AnnotationEditorSheet(
+                title = "Edit annotation",
+                initialNote = annotation.noteText,
+                initialColor = annotation.color,
+                quote = annotation.quote,
+                colors = readerColors,
+                onDismiss = { editingAnnotation = null },
+                onSave = { note, color ->
+                    onUpdateAnnotation(annotation.id, note, color)
+                    editingAnnotation = null
+                },
+                onDelete = {
+                    onDeleteAnnotation(annotation.id)
+                    editingAnnotation = null
+                },
+            )
+        }
+    }
+
+    if (showAnnotationsSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showAnnotationsSheet = false },
+        ) {
+            AnnotationListSheet(
+                annotations = uiState.annotations,
+                colors = readerColors,
+                onSync = onSyncAnnotations,
+                onOpen = { annotation ->
+                    jumpToParagraphIndex = annotation.anchor.startParagraphIndex
+                    showAnnotationsSheet = false
+                },
+                onEdit = { annotation ->
+                    editingAnnotation = annotation
+                    showAnnotationsSheet = false
+                },
+            )
+        }
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = readerColors.background,
@@ -223,6 +310,13 @@ fun ReaderScreen(
                                     Icons.Outlined.Archive
                                 },
                                 contentDescription = if (article.isArchived) "Unarchive" else "Archive",
+                                tint = readerColors.content,
+                            )
+                        }
+                        IconButton(onClick = { showAnnotationsSheet = true }) {
+                            Icon(
+                                imageVector = Icons.Outlined.Notes,
+                                contentDescription = "Annotations",
                                 tint = readerColors.content,
                             )
                         }
@@ -348,16 +442,19 @@ fun ReaderScreen(
                     modifier = Modifier.padding(innerPadding)
                 )
             } else {
-                androidx.compose.foundation.text.selection.SelectionContainer {
-                    ReaderContent(
-                        article = article,
-                        searchQuery = uiState.searchQuery,
-                        preferences = uiState.readerPreferences,
-                        colors = readerColors,
-                        innerPadding = innerPadding,
-                        onOpenOriginalUrl = { openInBrowser(context, article.originalUrl) },
-                    )
-                }
+                ReaderContent(
+                    article = article,
+                    searchQuery = uiState.searchQuery,
+                    preferences = uiState.readerPreferences,
+                    colors = readerColors,
+                    annotations = uiState.annotations,
+                    innerPadding = innerPadding,
+                    jumpToParagraphIndex = jumpToParagraphIndex,
+                    onJumpHandled = { jumpToParagraphIndex = null },
+                    onOpenOriginalUrl = { openInBrowser(context, article.originalUrl) },
+                    onAnnotationSelected = { editingAnnotation = it },
+                    onCreateAnnotationDraft = { draft -> annotationDraft = draft },
+                )
             }
         }
     }
@@ -369,8 +466,13 @@ private fun ReaderContent(
     searchQuery: String,
     preferences: ReaderPreferences,
     colors: ReaderColors,
+    annotations: List<ArticleAnnotation>,
     innerPadding: PaddingValues,
+    jumpToParagraphIndex: Int?,
+    onJumpHandled: () -> Unit,
     onOpenOriginalUrl: () -> Unit,
+    onAnnotationSelected: (ArticleAnnotation) -> Unit,
+    onCreateAnnotationDraft: (AnnotationDraftState) -> Unit,
 ) {
     val paragraphs = remember(article.bodyText) {
         article.bodyText
@@ -381,8 +483,17 @@ private fun ReaderContent(
     val metadata = remember(article.bodyText, article.originalUrl) {
         article.toReaderMetadata()
     }
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(jumpToParagraphIndex) {
+        jumpToParagraphIndex?.let { paragraphIndex ->
+            listState.animateScrollToItem((paragraphIndex + 1).coerceAtLeast(0))
+            onJumpHandled()
+        }
+    }
 
     LazyColumn(
+        state = listState,
         modifier = Modifier
             .fillMaxSize()
             .background(colors.background),
@@ -430,7 +541,10 @@ private fun ReaderContent(
             }
         }
 
-        items(paragraphs) { paragraph ->
+        itemsIndexed(
+            items = paragraphs,
+            key = { index, _ -> "paragraph-$index" },
+        ) { paragraphIndex, paragraph ->
             if (paragraph.startsWith("![img](") && paragraph.endsWith(")")) {
                 val url = paragraph.substringAfter("![img](").substringBeforeLast(")")
                 AsyncImage(
@@ -442,19 +556,427 @@ private fun ReaderContent(
                     contentScale = androidx.compose.ui.layout.ContentScale.FillWidth
                 )
             } else {
-                Text(
-                    text = paragraph.highlightMatches(
-                        query = searchQuery,
-                        highlightColor = colors.highlight,
-                    ),
-                    style = TextStyle(
-                        fontFamily = preferences.asFontFamily(),
-                        fontWeight = preferences.asFontWeight(),
-                        fontSize = MaterialTheme.typography.bodyLarge.fontSize * (preferences.fontSizeSp / 18f),
-                        lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * (preferences.fontSizeSp / 18f),
-                    ),
-                    color = colors.content,
+                AnnotatableParagraph(
+                    paragraph = paragraph,
+                    paragraphIndex = paragraphIndex,
+                    searchQuery = searchQuery,
+                    preferences = preferences,
+                    colors = colors,
+                    annotations = annotations,
+                    onAnnotationSelected = onAnnotationSelected,
+                    onCreateAnnotationDraft = onCreateAnnotationDraft,
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AnnotatableParagraph(
+    paragraph: String,
+    paragraphIndex: Int,
+    searchQuery: String,
+    preferences: ReaderPreferences,
+    colors: ReaderColors,
+    annotations: List<ArticleAnnotation>,
+    onAnnotationSelected: (ArticleAnnotation) -> Unit,
+    onCreateAnnotationDraft: (AnnotationDraftState) -> Unit,
+) {
+    var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+    var selection by remember { mutableStateOf<ParagraphSelection?>(null) }
+    val paragraphAnnotations = remember(annotations, paragraphIndex) {
+        annotations.filter { annotation ->
+            paragraphIndex in annotation.anchor.startParagraphIndex..annotation.anchor.endParagraphIndex
+        }
+    }
+    val annotatedText = remember(paragraph, paragraphIndex, searchQuery, colors, paragraphAnnotations, selection) {
+        paragraph.toAnnotatedParagraph(
+            paragraphIndex = paragraphIndex,
+            searchQuery = searchQuery,
+            colors = colors,
+            annotations = paragraphAnnotations,
+            selection = selection,
+        )
+    }
+
+    Text(
+        text = annotatedText,
+        style = TextStyle(
+            fontFamily = preferences.asFontFamily(),
+            fontWeight = preferences.asFontWeight(),
+            fontSize = MaterialTheme.typography.bodyLarge.fontSize * (preferences.fontSizeSp / 18f),
+            lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * (preferences.fontSizeSp / 18f),
+        ),
+        color = colors.content,
+        onTextLayout = { layoutResult = it },
+        modifier = Modifier
+            .pointerInput(annotatedText, paragraphAnnotations) {
+                detectTapGestures { offset ->
+                    val position = layoutResult?.getOffsetForPosition(offset)
+                    if (position != null) {
+                        val annotationId = annotatedText
+                            .getStringAnnotations(AnnotationTag, position, position)
+                            .firstOrNull()
+                            ?.item
+                            ?.toLongOrNull()
+                        val annotation = paragraphAnnotations.firstOrNull { it.id == annotationId }
+                        if (annotation != null) {
+                            onAnnotationSelected(annotation)
+                        }
+                    }
+                }
+            }
+            .pointerInput(paragraph, paragraphIndex) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { offset ->
+                        layoutResult?.getOffsetForPosition(offset)?.let { position ->
+                            selection = ParagraphSelection(position, position)
+                        }
+                    },
+                    onDrag = { change, _ ->
+                        val current = selection
+                        val position = layoutResult?.getOffsetForPosition(change.position)
+                        if (current != null && position != null) {
+                            selection = current.copy(endOffset = position)
+                        }
+                        change.consume()
+                    },
+                    onDragEnd = {
+                        val current = selection?.normalized()
+                        selection = null
+                        if (current != null && current.startOffset != current.endOffset) {
+                            val startOffset = current.startOffset.coerceIn(0, paragraph.length)
+                            val endOffset = current.endOffset.coerceIn(0, paragraph.length)
+                            val quote = paragraph.substring(startOffset, endOffset).trim()
+                            if (quote.isNotBlank()) {
+                                val anchor = AnnotationAnchor(
+                                    startParagraphIndex = paragraphIndex,
+                                    endParagraphIndex = paragraphIndex,
+                                    startCharOffset = startOffset,
+                                    endCharOffset = endOffset,
+                                    prefixText = paragraph.substring(0, startOffset).takeLast(32),
+                                    suffixText = paragraph.substring(endOffset).take(32),
+                                )
+                                onCreateAnnotationDraft(
+                                    AnnotationDraftState(
+                                        anchor = anchor,
+                                        quote = quote,
+                                        noteText = "",
+                                        color = AnnotationColor.Yellow,
+                                    ),
+                                )
+                            }
+                        }
+                    },
+                    onDragCancel = { selection = null },
+                )
+            },
+    )
+}
+
+private fun String.toAnnotatedParagraph(
+    paragraphIndex: Int,
+    searchQuery: String,
+    colors: ReaderColors,
+    annotations: List<ArticleAnnotation>,
+    selection: ParagraphSelection?,
+): AnnotatedString {
+    val builder = AnnotatedString.Builder(this)
+
+    annotations.forEach { annotation ->
+        val range = annotation.anchor.rangeForParagraph(paragraphIndex, length) ?: return@forEach
+        val annotationColor = annotation.color.toComposeColor()
+        builder.addStyle(
+            style = SpanStyle(
+                background = annotationColor.copy(alpha = if (annotation.noteText.isBlank()) 0.34f else 0.46f),
+                color = colors.content,
+            ),
+            start = range.first,
+            end = range.last,
+        )
+        builder.addStringAnnotation(
+            tag = AnnotationTag,
+            annotation = annotation.id.toString(),
+            start = range.first,
+            end = range.last,
+        )
+    }
+
+    selection?.normalized()?.takeIf { it.startOffset != it.endOffset }?.let { selected ->
+        builder.addStyle(
+            style = SpanStyle(background = colors.selection),
+            start = selected.startOffset.coerceIn(0, length),
+            end = selected.endOffset.coerceIn(0, length),
+        )
+    }
+
+    val query = searchQuery.trim()
+    if (query.isNotEmpty()) {
+        var start = indexOf(query, ignoreCase = true)
+        while (start >= 0) {
+            val end = start + query.length
+            builder.addStyle(
+                style = SpanStyle(background = colors.highlight),
+                start = start,
+                end = end,
+            )
+            start = indexOf(query, startIndex = end, ignoreCase = true)
+        }
+    }
+
+    return builder.toAnnotatedString()
+}
+
+private fun AnnotationAnchor.rangeForParagraph(paragraphIndex: Int, paragraphLength: Int): IntRange? {
+    if (paragraphIndex !in startParagraphIndex..endParagraphIndex) {
+        return null
+    }
+    val start = if (paragraphIndex == startParagraphIndex) startCharOffset else 0
+    val end = if (paragraphIndex == endParagraphIndex) endCharOffset else paragraphLength
+    val safeStart = start.coerceIn(0, paragraphLength)
+    val safeEnd = end.coerceIn(0, paragraphLength)
+    if (safeStart == safeEnd) {
+        return null
+    }
+    return safeStart.coerceAtMost(safeEnd)..safeStart.coerceAtLeast(safeEnd)
+}
+
+private data class ParagraphSelection(
+    val startOffset: Int,
+    val endOffset: Int,
+) {
+    fun normalized(): ParagraphSelection = if (startOffset <= endOffset) {
+        this
+    } else {
+        ParagraphSelection(startOffset = endOffset, endOffset = startOffset)
+    }
+}
+
+data class AnnotationDraftState(
+    val anchor: AnnotationAnchor,
+    val quote: String,
+    val noteText: String,
+    val color: AnnotationColor,
+)
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AnnotationEditorSheet(
+    title: String,
+    initialNote: String,
+    initialColor: AnnotationColor,
+    quote: String,
+    colors: ReaderColors,
+    onDismiss: () -> Unit,
+    onSave: (String, AnnotationColor) -> Unit,
+    onDelete: (() -> Unit)? = null,
+) {
+    val clipboard = LocalClipboardManager.current
+    var noteText by rememberSaveable(initialNote) { mutableStateOf(initialNote) }
+    var selectedColor by rememberSaveable(initialColor) { mutableStateOf(initialColor) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+        )
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = selectedColor.toComposeColor().copy(alpha = 0.28f),
+            border = BorderStroke(1.dp, selectedColor.toComposeColor().copy(alpha = 0.56f)),
+        ) {
+            Text(
+                text = quote,
+                modifier = Modifier.padding(16.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.content,
+                maxLines = 5,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        OutlinedTextField(
+            value = noteText,
+            onValueChange = { noteText = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 120.dp),
+            label = { Text("Note") },
+            placeholder = { Text("Add a thought, reminder, or summary") },
+            minLines = 4,
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            AnnotationColor.entries.forEach { color ->
+                FilterChip(
+                    selected = selectedColor == color,
+                    onClick = { selectedColor = color },
+                    label = { Text(color.label) },
+                    leadingIcon = {
+                        Surface(
+                            shape = RoundedCornerShape(999.dp),
+                            color = color.toComposeColor(),
+                            modifier = Modifier.size(14.dp),
+                            content = {},
+                        )
+                    },
+                )
+            }
+        }
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            TextButton(onClick = { clipboard.setText(AnnotatedString(quote)) }) {
+                Text("Copy quote")
+            }
+            if (onDelete != null) {
+                TextButton(onClick = onDelete) {
+                    Icon(Icons.Outlined.Delete, contentDescription = null)
+                    Text("Delete")
+                }
+            }
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+            Button(onClick = { onSave(noteText, selectedColor) }) {
+                Text("Save")
+            }
+        }
+    }
+}
+
+@Composable
+private fun AnnotationListSheet(
+    annotations: List<ArticleAnnotation>,
+    colors: ReaderColors,
+    onSync: () -> Unit,
+    onOpen: (ArticleAnnotation) -> Unit,
+    onEdit: (ArticleAnnotation) -> Unit,
+) {
+    var query by rememberSaveable { mutableStateOf("") }
+    val filteredAnnotations = remember(annotations, query) {
+        val needle = query.trim()
+        if (needle.isBlank()) {
+            annotations
+        } else {
+            annotations.filter { annotation ->
+                annotation.quote.contains(needle, ignoreCase = true) ||
+                    annotation.noteText.contains(needle, ignoreCase = true)
+            }
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Annotations",
+                style = MaterialTheme.typography.titleLarge,
+            )
+            IconButton(onClick = onSync) {
+                Icon(Icons.Outlined.Sync, contentDescription = "Sync annotations")
+            }
+        }
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Search annotations") },
+            singleLine = true,
+        )
+        if (filteredAnnotations.isEmpty()) {
+            Text(
+                text = if (annotations.isEmpty()) {
+                    "Long-press text in the article to create your first annotation."
+                } else {
+                    "No annotations match that search."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.muted,
+            )
+        } else {
+            LazyColumn(
+                modifier = Modifier.heightIn(max = 440.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                items(filteredAnnotations, key = { it.id }) { annotation ->
+                    AnnotationListItem(
+                        annotation = annotation,
+                        colors = colors,
+                        onOpen = { onOpen(annotation) },
+                        onEdit = { onEdit(annotation) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AnnotationListItem(
+    annotation: ArticleAnnotation,
+    colors: ReaderColors,
+    onOpen: () -> Unit,
+    onEdit: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = annotation.color.toComposeColor().copy(alpha = 0.20f),
+        border = BorderStroke(1.dp, annotation.color.toComposeColor().copy(alpha = 0.44f)),
+    ) {
+        Column(
+            modifier = Modifier
+                .clickable(onClick = onOpen)
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = annotation.quote,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.content,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (annotation.noteText.isNotBlank()) {
+                Text(
+                    text = annotation.noteText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.muted,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = annotation.syncState.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.muted,
+                )
+                TextButton(onClick = onEdit) {
+                    Icon(Icons.Outlined.Notes, contentDescription = null)
+                    Text("Edit")
+                }
             }
         }
     }
@@ -723,11 +1245,23 @@ private val ReaderFontWeight.label: String
         ReaderFontWeight.BOLD -> "Bold"
     }
 
+private val AnnotationSyncState.label: String
+    get() = when (this) {
+        AnnotationSyncState.LocalOnly -> "Waiting for wallabag"
+        AnnotationSyncState.Pending -> "Sync pending"
+        AnnotationSyncState.Synced -> "Synced"
+        AnnotationSyncState.Failed -> "Sync failed"
+    }
+
+private fun AnnotationColor.toComposeColor(): Color =
+    Color(android.graphics.Color.parseColor(hex))
+
 private data class ReaderColors(
     val background: Color,
     val content: Color,
     val muted: Color,
     val highlight: Color,
+    val selection: Color,
     val pillContainer: Color,
     val pillContent: Color,
     val pillBorder: Color,
@@ -740,6 +1274,7 @@ private fun readerColors(preferences: ReaderPreferences): ReaderColors = when (p
         content = Color(0xFF1D1B20),
         muted = Color(0xFF625B71),
         highlight = Color(0xFF6750A4).copy(alpha = 0.18f),
+        selection = Color(0xFF6750A4).copy(alpha = 0.26f),
         pillContainer = Color(0xFFF4EFFA),
         pillContent = Color(0xFF2A2333),
         pillBorder = Color(0xFFD7CFE4),
@@ -749,6 +1284,7 @@ private fun readerColors(preferences: ReaderPreferences): ReaderColors = when (p
         content = Color(0xFFF6F6F6),
         muted = Color(0xFFB5B5B5),
         highlight = Color(0xFF3F7CAC).copy(alpha = 0.36f),
+        selection = Color(0xFF89B4FA).copy(alpha = 0.34f),
         pillContainer = Color(0xFF1D1715),
         pillContent = Color(0xFFF3E7E2),
         pillBorder = Color(0xFF6F534C),
@@ -758,6 +1294,7 @@ private fun readerColors(preferences: ReaderPreferences): ReaderColors = when (p
         content = Color(0xFF2D2418),
         muted = Color(0xFF6C604F),
         highlight = Color(0xFFD8B25A).copy(alpha = 0.36f),
+        selection = Color(0xFFD8B25A).copy(alpha = 0.46f),
         pillContainer = Color(0xFFECE0C7),
         pillContent = Color(0xFF34291B),
         pillBorder = Color(0xFFCDBB96),
@@ -811,3 +1348,5 @@ private fun String.toDisplayDomain(): String {
 }
 
 private const val WordsPerMinute = 200
+
+private const val AnnotationTag = "brownpaper-annotation"

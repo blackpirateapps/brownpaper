@@ -24,5 +24,6 @@ interface WallabagRepository {
 
     suspend fun disconnect()
     suspend fun syncNow(): WallabagSyncResult
+    suspend fun syncAnnotationsForArticle(articleId: Long): WallabagSyncResult
     fun scheduleSync()
 }

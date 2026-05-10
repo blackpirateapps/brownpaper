@@ -7,11 +7,16 @@ import com.blackpirateapps.brownpaper.core.model.ReaderFontFamily
 import com.blackpirateapps.brownpaper.core.model.ReaderFontWeight
 import com.blackpirateapps.brownpaper.core.model.ReaderPreferences
 import com.blackpirateapps.brownpaper.core.model.ReaderTheme
+import com.blackpirateapps.brownpaper.domain.model.AnnotationAnchor
+import com.blackpirateapps.brownpaper.domain.model.AnnotationColor
+import com.blackpirateapps.brownpaper.domain.model.ArticleAnnotation
 import com.blackpirateapps.brownpaper.domain.model.ArticleDetail
 import com.blackpirateapps.brownpaper.domain.model.Folder
 import com.blackpirateapps.brownpaper.domain.model.Tag
+import com.blackpirateapps.brownpaper.domain.repository.AnnotationRepository
 import com.blackpirateapps.brownpaper.domain.repository.ArticleRepository
 import com.blackpirateapps.brownpaper.domain.repository.ReaderPreferencesRepository
+import com.blackpirateapps.brownpaper.domain.repository.WallabagRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -28,7 +33,15 @@ data class ReaderUiState(
     val readerPreferences: ReaderPreferences = ReaderPreferences(),
     val availableTags: List<Tag> = emptyList(),
     val availableFolders: List<Folder> = emptyList(),
+    val annotations: List<ArticleAnnotation> = emptyList(),
     val searchQuery: String = "",
+)
+
+private data class ReaderSupportState(
+    val tags: List<Tag>,
+    val folders: List<Folder>,
+    val annotations: List<ArticleAnnotation>,
+    val searchQuery: String,
 )
 
 sealed interface ReaderEvent {
@@ -40,6 +53,8 @@ sealed interface ReaderEvent {
 class ReaderViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val articleRepository: ArticleRepository,
+    private val annotationRepository: AnnotationRepository,
+    private val wallabagRepository: WallabagRepository,
     private val readerPreferencesRepository: ReaderPreferencesRepository,
 ) : ViewModel() {
 
@@ -49,25 +64,44 @@ class ReaderViewModel @Inject constructor(
 
     val events = _events.asSharedFlow()
 
+    private val supportState = combine(
+        articleRepository.observeTags(),
+        articleRepository.observeFolders(),
+        annotationRepository.observeAnnotations(articleId),
+        searchQuery,
+    ) { tags, folders, annotations, query ->
+        ReaderSupportState(
+            tags = tags,
+            folders = folders,
+            annotations = annotations,
+            searchQuery = query,
+        )
+    }
+
     val uiState: StateFlow<ReaderUiState> = combine(
         articleRepository.observeArticle(articleId),
         readerPreferencesRepository.readerPreferences,
-        articleRepository.observeTags(),
-        articleRepository.observeFolders(),
-        searchQuery,
-    ) { article, preferences, tags, folders, query ->
+        supportState,
+    ) { article, preferences, support ->
         ReaderUiState(
             article = article,
             readerPreferences = preferences,
-            availableTags = tags,
-            availableFolders = folders,
-            searchQuery = query,
+            availableTags = support.tags,
+            availableFolders = support.folders,
+            annotations = support.annotations,
+            searchQuery = support.searchQuery,
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = ReaderUiState(),
     )
+
+    init {
+        viewModelScope.launch {
+            wallabagRepository.syncAnnotationsForArticle(articleId)
+        }
+    }
 
     fun toggleLiked() {
         viewModelScope.launch {
@@ -143,6 +177,41 @@ class ReaderViewModel @Inject constructor(
         viewModelScope.launch {
             articleRepository.deleteArticle(articleId)
             _events.emit(ReaderEvent.Deleted)
+        }
+    }
+
+    fun createAnnotation(anchor: AnnotationAnchor, quote: String, noteText: String, color: AnnotationColor) {
+        viewModelScope.launch {
+            val annotationId = annotationRepository.createAnnotation(
+                articleId = articleId,
+                anchor = anchor,
+                quote = quote,
+                noteText = noteText,
+                color = color,
+            )
+            if (annotationId != null) {
+                _events.emit(ReaderEvent.Message("Annotation saved."))
+            }
+        }
+    }
+
+    fun updateAnnotation(annotationId: Long, noteText: String, color: AnnotationColor) {
+        viewModelScope.launch {
+            annotationRepository.updateAnnotation(annotationId, noteText, color)
+            _events.emit(ReaderEvent.Message("Annotation updated."))
+        }
+    }
+
+    fun deleteAnnotation(annotationId: Long) {
+        viewModelScope.launch {
+            annotationRepository.deleteAnnotation(annotationId)
+            _events.emit(ReaderEvent.Message("Annotation deleted."))
+        }
+    }
+
+    fun syncAnnotations() {
+        viewModelScope.launch {
+            wallabagRepository.syncAnnotationsForArticle(articleId)
         }
     }
 }

@@ -196,6 +196,10 @@ fun BrownPaperApp(
                         onSearchInArticle = viewModel::setSearchQuery,
                         onUpdateVideoPosition = viewModel::updateVideoPosition,
                         onDeleteArticle = viewModel::deleteArticle,
+                        onCreateAnnotation = viewModel::createAnnotation,
+                        onUpdateAnnotation = viewModel::updateAnnotation,
+                        onDeleteAnnotation = viewModel::deleteAnnotation,
+                        onSyncAnnotations = viewModel::syncAnnotations,
                         onDeleted = { navController.popBackStack() },
                     )
                 }
