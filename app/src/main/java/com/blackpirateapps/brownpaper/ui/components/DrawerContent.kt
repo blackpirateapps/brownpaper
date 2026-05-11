@@ -47,13 +47,14 @@ fun BrownPaperDrawerContent(
     folders: List<Folder>,
     isWallabagConnected: Boolean,
     isSyncingWallabag: Boolean,
+    modifier: Modifier = Modifier,
     onSelectSource: (ArticleListSource?, Long?) -> Unit,
     onSyncWallabag: () -> Unit,
 ) {
     var tagsExpanded by rememberSaveable { mutableStateOf(true) }
     var foldersExpanded by rememberSaveable { mutableStateOf(true) }
 
-    ModalDrawerSheet {
+    ModalDrawerSheet(modifier = modifier) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.blackpirateapps.brownpaper.core.di.ReaderPreferencesStore
+import com.blackpirateapps.brownpaper.core.model.ReaderContentWidth
 import com.blackpirateapps.brownpaper.core.model.ReaderFontFamily
 import com.blackpirateapps.brownpaper.core.model.ReaderFontWeight
 import com.blackpirateapps.brownpaper.core.model.ReaderPreferences
@@ -33,6 +34,8 @@ class ReaderPreferencesRepositoryImpl @Inject constructor(
                     ReaderFontWeight.REGULAR
                 },
             theme = preferences[ThemeKey]?.let { ReaderTheme.valueOf(it) } ?: ReaderTheme.LIGHT,
+            contentWidth = preferences[ContentWidthKey]?.let { ReaderContentWidth.valueOf(it) }
+                ?: ReaderContentWidth.COMFORTABLE,
         )
     }
 
@@ -55,11 +58,16 @@ class ReaderPreferencesRepositoryImpl @Inject constructor(
         dataStore.edit { it[ThemeKey] = theme.name }
     }
 
+    override suspend fun updateContentWidth(contentWidth: ReaderContentWidth) {
+        dataStore.edit { it[ContentWidthKey] = contentWidth.name }
+    }
+
     private companion object {
         val FontFamilyKey = stringPreferencesKey("font_family")
         val FontWeightKey = stringPreferencesKey("font_weight")
         val FontSizeKey = floatPreferencesKey("font_size_sp")
         val UseEmphasizedWeightKey = booleanPreferencesKey("use_emphasized_weight")
         val ThemeKey = stringPreferencesKey("theme")
+        val ContentWidthKey = stringPreferencesKey("content_width")
     }
 }

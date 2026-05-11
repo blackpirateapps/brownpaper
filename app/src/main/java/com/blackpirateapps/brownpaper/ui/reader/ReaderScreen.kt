@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -62,6 +63,8 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -88,8 +91,10 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.Dp
 import coil3.compose.AsyncImage
 import com.blackpirateapps.brownpaper.R
+import com.blackpirateapps.brownpaper.core.model.ReaderContentWidth
 import com.blackpirateapps.brownpaper.core.model.ReaderFontFamily
 import com.blackpirateapps.brownpaper.core.model.ReaderFontWeight
 import com.blackpirateapps.brownpaper.core.model.ReaderPreferences
@@ -118,6 +123,7 @@ fun ReaderScreen(
     onUpdateFontSize: (Float) -> Unit,
     onUpdateFontWeight: (ReaderFontWeight) -> Unit,
     onUpdateTheme: (ReaderTheme) -> Unit,
+    onUpdateContentWidth: (ReaderContentWidth) -> Unit,
     onSaveTags: (Set<Long>, List<String>) -> Unit,
     onMoveToFolder: (Long?, String) -> Unit,
     onSearchInArticle: (String) -> Unit,
@@ -196,6 +202,7 @@ fun ReaderScreen(
                 onUpdateFontSize = onUpdateFontSize,
                 onUpdateFontWeight = onUpdateFontWeight,
                 onUpdateTheme = onUpdateTheme,
+                onUpdateContentWidth = onUpdateContentWidth,
             )
         }
     }
@@ -435,12 +442,24 @@ fun ReaderScreen(
             }
         } else {
             if (article.isVideo && !article.youtubeVideoId.isNullOrBlank()) {
-                com.blackpirateapps.brownpaper.ui.components.YoutubeVideoPlayer(
-                    videoId = article.youtubeVideoId,
-                    startSeconds = article.videoPositionSeconds,
-                    onPositionChanged = onUpdateVideoPosition,
-                    modifier = Modifier.padding(innerPadding)
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(readerColors.background)
+                        .padding(innerPadding)
+                        .padding(20.dp),
+                    contentAlignment = Alignment.TopCenter,
+                ) {
+                    com.blackpirateapps.brownpaper.ui.components.YoutubeVideoPlayer(
+                        videoId = article.youtubeVideoId,
+                        startSeconds = article.videoPositionSeconds,
+                        onPositionChanged = onUpdateVideoPosition,
+                        modifier = Modifier
+                            .widthIn(max = uiState.readerPreferences.contentWidth.maxWidth)
+                            .fillMaxWidth()
+                            .aspectRatio(16f / 9f),
+                    )
+                }
             } else {
                 ReaderContent(
                     article = article,
@@ -484,6 +503,7 @@ private fun ReaderContent(
         article.toReaderMetadata()
     }
     val listState = rememberLazyListState()
+    val maxContentWidth = preferences.contentWidth.maxWidth
 
     LaunchedEffect(jumpToParagraphIndex) {
         jumpToParagraphIndex?.let { paragraphIndex ->
@@ -506,38 +526,48 @@ private fun ReaderContent(
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                if (!article.heroImageUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = article.heroImageUrl,
-                        contentDescription = article.title,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(16f / 9f),
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(
+                    modifier = Modifier
+                        .widthIn(max = maxContentWidth)
+                        .fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    if (!article.heroImageUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = article.heroImageUrl,
+                            contentDescription = article.title,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(16f / 9f),
+                        )
+                    }
+                    Text(
+                        text = article.title,
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontFamily = preferences.asFontFamily(),
+                            fontWeight = preferences.asFontWeight(),
+                        ),
+                        color = colors.content,
+                    )
+                    Text(
+                        text = article.dateAdded.toReadableArticleDate(),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = colors.muted,
+                    )
+                    ReaderMetadataPills(
+                        metadata = metadata,
+                        colors = colors,
+                        onOpenOriginalUrl = onOpenOriginalUrl,
+                    )
+                    ReaderTaxonomyPills(
+                        article = article,
+                        colors = colors,
                     )
                 }
-                Text(
-                    text = article.title,
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontFamily = preferences.asFontFamily(),
-                        fontWeight = preferences.asFontWeight(),
-                    ),
-                    color = colors.content,
-                )
-                Text(
-                    text = article.dateAdded.toReadableArticleDate(),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = colors.muted,
-                )
-                ReaderMetadataPills(
-                    metadata = metadata,
-                    colors = colors,
-                    onOpenOriginalUrl = onOpenOriginalUrl,
-                )
-                ReaderTaxonomyPills(
-                    article = article,
-                    colors = colors,
-                )
             }
         }
 
@@ -545,27 +575,36 @@ private fun ReaderContent(
             items = paragraphs,
             key = { index, _ -> "paragraph-$index" },
         ) { paragraphIndex, paragraph ->
-            if (paragraph.startsWith("![img](") && paragraph.endsWith(")")) {
-                val url = paragraph.substringAfter("![img](").substringBeforeLast(")")
-                AsyncImage(
-                    model = url,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    contentScale = androidx.compose.ui.layout.ContentScale.FillWidth
-                )
-            } else {
-                AnnotatableParagraph(
-                    paragraph = paragraph,
-                    paragraphIndex = paragraphIndex,
-                    searchQuery = searchQuery,
-                    preferences = preferences,
-                    colors = colors,
-                    annotations = annotations,
-                    onAnnotationSelected = onAnnotationSelected,
-                    onCreateAnnotationDraft = onCreateAnnotationDraft,
-                )
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (paragraph.startsWith("![img](") && paragraph.endsWith(")")) {
+                    val url = paragraph.substringAfter("![img](").substringBeforeLast(")")
+                    AsyncImage(
+                        model = url,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .widthIn(max = maxContentWidth)
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        contentScale = androidx.compose.ui.layout.ContentScale.FillWidth,
+                    )
+                } else {
+                    AnnotatableParagraph(
+                        paragraph = paragraph,
+                        paragraphIndex = paragraphIndex,
+                        searchQuery = searchQuery,
+                        preferences = preferences,
+                        colors = colors,
+                        annotations = annotations,
+                        onAnnotationSelected = onAnnotationSelected,
+                        onCreateAnnotationDraft = onCreateAnnotationDraft,
+                        modifier = Modifier
+                            .widthIn(max = maxContentWidth)
+                            .fillMaxWidth(),
+                    )
+                }
             }
         }
     }
@@ -581,6 +620,7 @@ private fun AnnotatableParagraph(
     annotations: List<ArticleAnnotation>,
     onAnnotationSelected: (ArticleAnnotation) -> Unit,
     onCreateAnnotationDraft: (AnnotationDraftState) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
     var selection by remember { mutableStateOf<ParagraphSelection?>(null) }
@@ -609,7 +649,7 @@ private fun AnnotatableParagraph(
         ),
         color = colors.content,
         onTextLayout = { layoutResult = it },
-        modifier = Modifier
+        modifier = modifier
             .pointerInput(annotatedText, paragraphAnnotations) {
                 detectTapGestures { offset ->
                     val position = layoutResult?.getOffsetForPosition(offset)
@@ -1087,17 +1127,62 @@ private fun ReaderSettingsSheet(
     onUpdateFontSize: (Float) -> Unit,
     onUpdateFontWeight: (ReaderFontWeight) -> Unit,
     onUpdateTheme: (ReaderTheme) -> Unit,
+    onUpdateContentWidth: (ReaderContentWidth) -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+    var selectedTab by rememberSaveable { mutableStateOf(ReaderSettingsTab.Text) }
+
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = Alignment.TopCenter,
     ) {
-        Text(
-            text = "Reader settings",
-            style = MaterialTheme.typography.titleLarge,
-        )
+        Column(
+            modifier = Modifier
+                .widthIn(max = 720.dp)
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            Text(
+                text = "Reader settings",
+                style = MaterialTheme.typography.titleLarge,
+            )
+            TabRow(selectedTabIndex = selectedTab.ordinal) {
+                ReaderSettingsTab.entries.forEach { tab ->
+                    Tab(
+                        selected = selectedTab == tab,
+                        onClick = { selectedTab = tab },
+                        text = { Text(tab.label) },
+                    )
+                }
+            }
+            when (selectedTab) {
+                ReaderSettingsTab.Text -> ReaderTextSettings(
+                    preferences = preferences,
+                    onUpdateFontFamily = onUpdateFontFamily,
+                    onUpdateFontSize = onUpdateFontSize,
+                    onUpdateFontWeight = onUpdateFontWeight,
+                )
+                ReaderSettingsTab.Theme -> ReaderThemeSettings(
+                    preferences = preferences,
+                    onUpdateTheme = onUpdateTheme,
+                )
+                ReaderSettingsTab.Width -> ReaderWidthSettings(
+                    preferences = preferences,
+                    onUpdateContentWidth = onUpdateContentWidth,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReaderTextSettings(
+    preferences: ReaderPreferences,
+    onUpdateFontFamily: (ReaderFontFamily) -> Unit,
+    onUpdateFontSize: (Float) -> Unit,
+    onUpdateFontWeight: (ReaderFontWeight) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Font family", style = MaterialTheme.typography.titleMedium)
             Row(
@@ -1108,19 +1193,7 @@ private fun ReaderSettingsSheet(
                     FilterChip(
                         selected = preferences.fontFamily == fontFamily,
                         onClick = { onUpdateFontFamily(fontFamily) },
-                        label = {
-                            Text(
-                                when (fontFamily) {
-                                    ReaderFontFamily.SYSTEM -> "System"
-                                    ReaderFontFamily.SERIF -> "Serif"
-                                    ReaderFontFamily.MONO -> "Mono"
-                                    ReaderFontFamily.MERRIWEATHER -> "Merriweather"
-                                    ReaderFontFamily.LORA -> "Lora"
-                                    ReaderFontFamily.FIRA_SANS -> "Fira Sans"
-                                    ReaderFontFamily.INTER -> "Inter"
-                                },
-                            )
-                        },
+                        label = { Text(fontFamily.label) },
                     )
                 }
             }
@@ -1145,29 +1218,55 @@ private fun ReaderSettingsSheet(
                 onSelected = onUpdateFontWeight,
             )
         }
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Background", style = MaterialTheme.typography.titleMedium)
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-            ) {
-                ReaderTheme.entries.forEach { theme ->
-                    FilterChip(
-                        selected = preferences.theme == theme,
-                        onClick = { onUpdateTheme(theme) },
-                        label = {
-                            Text(
-                                when (theme) {
-                                    ReaderTheme.LIGHT -> "Light"
-                                    ReaderTheme.DARK -> "Dark"
-                                    ReaderTheme.PAPER -> "Paper"
-                                },
-                            )
-                        },
-                    )
-                }
+    }
+}
+
+@Composable
+private fun ReaderThemeSettings(
+    preferences: ReaderPreferences,
+    onUpdateTheme: (ReaderTheme) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Background", style = MaterialTheme.typography.titleMedium)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+        ) {
+            ReaderTheme.entries.forEach { theme ->
+                FilterChip(
+                    selected = preferences.theme == theme,
+                    onClick = { onUpdateTheme(theme) },
+                    label = { Text(theme.label) },
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun ReaderWidthSettings(
+    preferences: ReaderPreferences,
+    onUpdateContentWidth: (ReaderContentWidth) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Content width", style = MaterialTheme.typography.titleMedium)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+        ) {
+            ReaderContentWidth.entries.forEach { width ->
+                FilterChip(
+                    selected = preferences.contentWidth == width,
+                    onClick = { onUpdateContentWidth(width) },
+                    label = { Text(width.label) },
+                )
+            }
+        }
+        Text(
+            text = "${preferences.contentWidth.maxWidth.value.toInt()}dp",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -1238,11 +1337,56 @@ private fun ReaderPreferences.asFontWeight(): FontWeight = when (fontWeight) {
     ReaderFontWeight.BOLD -> FontWeight.Bold
 }
 
+private enum class ReaderSettingsTab {
+    Text,
+    Theme,
+    Width,
+}
+
+private val ReaderSettingsTab.label: String
+    get() = when (this) {
+        ReaderSettingsTab.Text -> "Text"
+        ReaderSettingsTab.Theme -> "Theme"
+        ReaderSettingsTab.Width -> "Width"
+    }
+
+private val ReaderFontFamily.label: String
+    get() = when (this) {
+        ReaderFontFamily.SYSTEM -> "System"
+        ReaderFontFamily.SERIF -> "Serif"
+        ReaderFontFamily.MONO -> "Mono"
+        ReaderFontFamily.MERRIWEATHER -> "Merriweather"
+        ReaderFontFamily.LORA -> "Lora"
+        ReaderFontFamily.FIRA_SANS -> "Fira Sans"
+        ReaderFontFamily.INTER -> "Inter"
+    }
+
 private val ReaderFontWeight.label: String
     get() = when (this) {
         ReaderFontWeight.LIGHT -> "Light"
         ReaderFontWeight.REGULAR -> "Regular"
         ReaderFontWeight.BOLD -> "Bold"
+    }
+
+private val ReaderTheme.label: String
+    get() = when (this) {
+        ReaderTheme.LIGHT -> "Light"
+        ReaderTheme.DARK -> "Dark"
+        ReaderTheme.PAPER -> "Paper"
+    }
+
+private val ReaderContentWidth.label: String
+    get() = when (this) {
+        ReaderContentWidth.COMPACT -> "Compact"
+        ReaderContentWidth.COMFORTABLE -> "Comfortable"
+        ReaderContentWidth.WIDE -> "Wide"
+    }
+
+private val ReaderContentWidth.maxWidth: Dp
+    get() = when (this) {
+        ReaderContentWidth.COMPACT -> 560.dp
+        ReaderContentWidth.COMFORTABLE -> 720.dp
+        ReaderContentWidth.WIDE -> 920.dp
     }
 
 private val AnnotationSyncState.label: String

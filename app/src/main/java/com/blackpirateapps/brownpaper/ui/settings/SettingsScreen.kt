@@ -3,13 +3,16 @@ package com.blackpirateapps.brownpaper.ui.settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -137,72 +140,73 @@ fun SettingsScreen(
             )
         }
     ) { innerPadding ->
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
                 .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
+            contentAlignment = Alignment.TopCenter,
         ) {
-            WallabagSettingsSection(
-                uiState = uiState,
-                onHostChange = viewModel::updateWallabagHost,
-                onUsernameChange = viewModel::updateWallabagUsername,
-                onPasswordChange = viewModel::updateWallabagPassword,
-                onClientIdChange = viewModel::updateWallabagClientId,
-                onClientSecretChange = viewModel::updateWallabagClientSecret,
-                onToggleAdvanced = viewModel::toggleWallabagAdvanced,
-                onLogin = viewModel::loginWallabag,
-                onSync = viewModel::syncWallabag,
-                onDisconnect = viewModel::disconnectWallabag,
-            )
+            val useTwoPane = maxWidth >= 840.dp
 
-            Spacer(modifier = Modifier.height(32.dp))
-            HorizontalDivider()
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = "Data Management",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Export your reading queue to a JSON file or restore from a previous backup.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth()
-            )
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            Button(
-                onClick = { viewModel.exportData() },
-                enabled = !uiState.isProcessing,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Outlined.Backup, contentDescription = null)
-                Spacer(modifier = Modifier.size(8.dp))
-                Text("Backup all data")
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Button(
-                onClick = { openDocumentLauncher.launch(arrayOf("application/json")) },
-                enabled = !uiState.isProcessing,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Outlined.Restore, contentDescription = null)
-                Spacer(modifier = Modifier.size(8.dp))
-                Text("Restore from backup")
-            }
-            
-            if (uiState.isProcessing) {
-                Spacer(modifier = Modifier.height(32.dp))
-                CircularProgressIndicator()
+            if (useTwoPane) {
+                Row(
+                    modifier = Modifier
+                        .widthIn(max = 1120.dp)
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(32.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    WallabagSettingsSection(
+                        uiState = uiState,
+                        onHostChange = viewModel::updateWallabagHost,
+                        onUsernameChange = viewModel::updateWallabagUsername,
+                        onPasswordChange = viewModel::updateWallabagPassword,
+                        onClientIdChange = viewModel::updateWallabagClientId,
+                        onClientSecretChange = viewModel::updateWallabagClientSecret,
+                        onToggleAdvanced = viewModel::toggleWallabagAdvanced,
+                        onLogin = viewModel::loginWallabag,
+                        onSync = viewModel::syncWallabag,
+                        onDisconnect = viewModel::disconnectWallabag,
+                        modifier = Modifier.weight(1f),
+                    )
+                    DataManagementSection(
+                        isProcessing = uiState.isProcessing,
+                        onExport = viewModel::exportData,
+                        onImport = { openDocumentLauncher.launch(arrayOf("application/json")) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .widthIn(max = 560.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Top,
+                ) {
+                    WallabagSettingsSection(
+                        uiState = uiState,
+                        onHostChange = viewModel::updateWallabagHost,
+                        onUsernameChange = viewModel::updateWallabagUsername,
+                        onPasswordChange = viewModel::updateWallabagPassword,
+                        onClientIdChange = viewModel::updateWallabagClientId,
+                        onClientSecretChange = viewModel::updateWallabagClientSecret,
+                        onToggleAdvanced = viewModel::toggleWallabagAdvanced,
+                        onLogin = viewModel::loginWallabag,
+                        onSync = viewModel::syncWallabag,
+                        onDisconnect = viewModel::disconnectWallabag,
+                    )
+                    Spacer(modifier = Modifier.height(32.dp))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(24.dp))
+                    DataManagementSection(
+                        isProcessing = uiState.isProcessing,
+                        onExport = viewModel::exportData,
+                        onImport = { openDocumentLauncher.launch(arrayOf("application/json")) },
+                    )
+                }
             }
         }
     }
@@ -220,9 +224,10 @@ private fun WallabagSettingsSection(
     onLogin: () -> Unit,
     onSync: () -> Unit,
     onDisconnect: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
@@ -338,6 +343,59 @@ private fun WallabagSettingsSection(
         }
 
         if (uiState.isLoggingIn || uiState.isSyncing) {
+            CircularProgressIndicator(
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+            )
+        }
+    }
+}
+
+@Composable
+private fun DataManagementSection(
+    isProcessing: Boolean,
+    onExport: () -> Unit,
+    onImport: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(
+            text = "Data Management",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Text(
+            text = "Export your reading queue to a JSON file or restore from a previous backup.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = onExport,
+            enabled = !isProcessing,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(Icons.Outlined.Backup, contentDescription = null)
+            Spacer(modifier = Modifier.size(8.dp))
+            Text("Backup all data")
+        }
+
+        Button(
+            onClick = onImport,
+            enabled = !isProcessing,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(Icons.Outlined.Restore, contentDescription = null)
+            Spacer(modifier = Modifier.size(8.dp))
+            Text("Restore from backup")
+        }
+
+        if (isProcessing) {
             CircularProgressIndicator(
                 modifier = Modifier.align(Alignment.CenterHorizontally),
             )

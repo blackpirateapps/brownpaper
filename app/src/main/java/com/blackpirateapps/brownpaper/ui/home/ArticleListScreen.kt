@@ -11,11 +11,15 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Close
@@ -60,6 +64,8 @@ fun ArticleListScreen(
     uiState: ArticleListUiState,
     isSavingArticle: Boolean,
     snackbarHostState: SnackbarHostState,
+    showNavigationIcon: Boolean = true,
+    useTabletLayout: Boolean = false,
     onOpenDrawer: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onArticleSelected: (Long) -> Unit,
@@ -80,7 +86,16 @@ fun ArticleListScreen(
     }
     
     val listState = rememberLazyListState()
-    val isFabExpanded by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
+    val gridState = rememberLazyGridState()
+    val isFabExpanded by remember(useTabletLayout) {
+        derivedStateOf {
+            if (useTabletLayout) {
+                gridState.firstVisibleItemIndex == 0
+            } else {
+                listState.firstVisibleItemIndex == 0
+            }
+        }
+    }
 
     Scaffold(
         modifier = Modifier.pointerInput(Unit) {
@@ -130,14 +145,7 @@ fun ArticleListScreen(
                         }
                     },
                     navigationIcon = {
-                        if (!isSearchExpanded) {
-                            IconButton(onClick = onOpenDrawer) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Menu,
-                                    contentDescription = "Open navigation",
-                                )
-                            }
-                        } else {
+                        if (isSearchExpanded) {
                             IconButton(onClick = {
                                 isSearchExpanded = false
                                 onSearchQueryChange("")
@@ -146,6 +154,13 @@ fun ArticleListScreen(
                                 Icon(
                                     imageVector = Icons.Outlined.Close,
                                     contentDescription = "Close search",
+                                )
+                            }
+                        } else if (showNavigationIcon) {
+                            IconButton(onClick = onOpenDrawer) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Menu,
+                                    contentDescription = "Open navigation",
                                 )
                             }
                         }
@@ -193,6 +208,33 @@ fun ArticleListScreen(
                 title = uiState.title,
                 modifier = Modifier.padding(innerPadding),
             )
+        } else if (useTabletLayout) {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 360.dp),
+                state = gridState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .pointerInput(Unit) {
+                        detectTapGestures(onTap = { focusManager.clearFocus() })
+                    },
+                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                items(uiState.articles, key = { it.id }) { article ->
+                    ArticleCard(
+                        article = article,
+                        searchQuery = uiState.searchQuery,
+                        onClick = { onArticleSelected(article.id) },
+                        onToggleFavorite = { onToggleFavorite(article.id) },
+                        onToggleArchive = { onToggleArchive(article) },
+                        onMarkRead = { onMarkRead(article.id) },
+                        onDelete = { onDeleteArticle(article.id) },
+                        modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null),
+                    )
+                }
+            }
         } else {
             LazyColumn(
                 state = listState,
@@ -234,7 +276,9 @@ private fun EmptyListState(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(24.dp),
+            modifier = Modifier
+                .padding(24.dp)
+                .widthIn(max = 520.dp),
         ) {
             Text(
                 text = "Nothing in $title yet",

@@ -17,11 +17,18 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -34,6 +41,7 @@ import com.blackpirateapps.brownpaper.ui.home.ArticleListScreen
 import com.blackpirateapps.brownpaper.ui.home.ArticleListViewModel
 import com.blackpirateapps.brownpaper.ui.reader.ReaderScreen
 import com.blackpirateapps.brownpaper.ui.reader.ReaderViewModel
+import com.blackpirateapps.brownpaper.ui.shell.ShellUiState
 import com.blackpirateapps.brownpaper.ui.shell.ShellViewModel
 import com.blackpirateapps.brownpaper.ui.theme.BrownPaperTheme
 import kotlinx.coroutines.flow.Flow
@@ -89,10 +97,10 @@ fun BrownPaperApp(
             )
         }
 
-        ModalNavigationDrawer(
-            drawerState = drawerState,
-            gesturesEnabled = isListDestination,
-            drawerContent = {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val usePermanentDrawer = maxWidth >= TabletBreakpoint
+
+            val drawerContent: @Composable (Boolean) -> Unit = { closeAfterAction ->
                 BrownPaperDrawerContent(
                     currentSource = currentSource,
                     currentSourceId = currentSourceId,
@@ -100,6 +108,11 @@ fun BrownPaperApp(
                     folders = shellUiState.folders,
                     isWallabagConnected = shellUiState.isWallabagConnected,
                     isSyncingWallabag = shellUiState.isSyncingWallabag,
+                    modifier = if (usePermanentDrawer) {
+                        Modifier.width(PermanentDrawerWidth)
+                    } else {
+                        Modifier
+                    },
                     onSelectSource = { source, sourceId ->
                         if (source == null) {
                             navController.navigate(BrownPaperRoutes.settingsRoute()) {
@@ -116,100 +129,151 @@ fun BrownPaperApp(
                                 restoreState = true
                             }
                         }
-                        coroutineScope.launch { drawerState.close() }
+                        if (closeAfterAction) {
+                            coroutineScope.launch { drawerState.close() }
+                        }
                     },
                     onSyncWallabag = {
                         shellViewModel.syncWallabag()
-                        coroutineScope.launch { drawerState.close() }
+                        if (closeAfterAction) {
+                            coroutineScope.launch { drawerState.close() }
+                        }
                     },
                 )
-            },
-        ) {
-            NavHost(
-                navController = navController,
-                startDestination = BrownPaperRoutes.listRoute(ArticleListSource.Inbox),
-                modifier = Modifier,
-                enterTransition = { slideInHorizontally(animationSpec = tween(300), initialOffsetX = { it }) + fadeIn(animationSpec = tween(300)) },
-                exitTransition = { slideOutHorizontally(animationSpec = tween(300), targetOffsetX = { -it / 2 }) + fadeOut(animationSpec = tween(300)) },
-                popEnterTransition = { slideInHorizontally(animationSpec = tween(300), initialOffsetX = { -it / 2 }) + fadeIn(animationSpec = tween(300)) },
-                popExitTransition = { slideOutHorizontally(animationSpec = tween(300), targetOffsetX = { it }) + fadeOut(animationSpec = tween(300)) },
-            ) {
-                composable(
-                    route = BrownPaperRoutes.listTemplate,
-                    arguments = listOf(
-                        navArgument("source") { type = NavType.StringType },
-                        navArgument("sourceId") {
-                            type = NavType.LongType
-                            defaultValue = -1L
-                        },
-                    ),
-                ) { entry ->
-                    val viewModel: ArticleListViewModel = hiltViewModel(entry)
-                    val routeSource = entry.arguments?.getString("source") ?: ArticleListSource.Inbox.routeValue
-                    val routeSourceId = entry.arguments?.getLong("sourceId") ?: -1L
-                    
-                    LaunchedEffect(routeSource, routeSourceId) {
-                        viewModel.updateSource(routeSource, routeSourceId)
-                    }
+            }
 
-                    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-                    ArticleListScreen(
-                        uiState = uiState,
-                        isSavingArticle = shellUiState.isSavingArticle,
+            if (usePermanentDrawer) {
+                Row(modifier = Modifier.fillMaxSize()) {
+                    drawerContent(false)
+                    Box(modifier = Modifier.weight(1f)) {
+                        BrownPaperNavHost(
+                            navController = navController,
+                            shellUiState = shellUiState,
+                            snackbarHostState = snackbarHostState,
+                            useTabletLayout = true,
+                            onOpenDrawer = {},
+                            onShowAddDialog = { showAddDialog = true },
+                        )
+                    }
+                }
+            } else {
+                ModalNavigationDrawer(
+                    drawerState = drawerState,
+                    gesturesEnabled = isListDestination,
+                    drawerContent = { drawerContent(true) },
+                ) {
+                    BrownPaperNavHost(
+                        navController = navController,
+                        shellUiState = shellUiState,
                         snackbarHostState = snackbarHostState,
+                        useTabletLayout = false,
                         onOpenDrawer = {
                             coroutineScope.launch { drawerState.open() }
                         },
-                        onSearchQueryChange = viewModel::updateSearchQuery,
-                        onArticleSelected = { articleId ->
-                            navController.navigate(BrownPaperRoutes.readerRoute(articleId))
-                        },
-                        onAddArticle = { showAddDialog = true },
-                        onToggleFavorite = viewModel::toggleFavorite,
-                        onToggleArchive = viewModel::toggleArchive,
-                        onMarkRead = viewModel::markRead,
-                        onDeleteArticle = viewModel::deleteArticle,
-                    )
-                }
-
-                composable(
-                    route = BrownPaperRoutes.readerTemplate,
-                    arguments = listOf(
-                        navArgument("articleId") { type = NavType.LongType },
-                    ),
-                ) { entry ->
-                    val viewModel: ReaderViewModel = hiltViewModel(entry)
-                    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-                    ReaderScreen(
-                        uiState = uiState,
-                        snackbarHostState = snackbarHostState,
-                        events = viewModel.events,
-                        onBack = { navController.popBackStack() },
-                        onToggleLiked = viewModel::toggleLiked,
-                        onToggleArchived = viewModel::toggleArchived,
-                        onUpdateFontFamily = viewModel::updateFontFamily,
-                        onUpdateFontSize = viewModel::updateFontSize,
-                        onUpdateFontWeight = viewModel::updateFontWeight,
-                        onUpdateTheme = viewModel::updateTheme,
-                        onSaveTags = viewModel::saveTags,
-                        onMoveToFolder = viewModel::moveToFolder,
-                        onSearchInArticle = viewModel::setSearchQuery,
-                        onUpdateVideoPosition = viewModel::updateVideoPosition,
-                        onDeleteArticle = viewModel::deleteArticle,
-                        onCreateAnnotation = viewModel::createAnnotation,
-                        onUpdateAnnotation = viewModel::updateAnnotation,
-                        onDeleteAnnotation = viewModel::deleteAnnotation,
-                        onSyncAnnotations = viewModel::syncAnnotations,
-                        onDeleted = { navController.popBackStack() },
-                    )
-                }
-
-                composable(route = BrownPaperRoutes.settings) {
-                    com.blackpirateapps.brownpaper.ui.settings.SettingsScreen(
-                        onBack = { navController.popBackStack() }
+                        onShowAddDialog = { showAddDialog = true },
                     )
                 }
             }
         }
     }
 }
+
+@Composable
+private fun BrownPaperNavHost(
+    navController: NavHostController,
+    shellUiState: ShellUiState,
+    snackbarHostState: SnackbarHostState,
+    useTabletLayout: Boolean,
+    onOpenDrawer: () -> Unit,
+    onShowAddDialog: () -> Unit,
+) {
+    NavHost(
+        navController = navController,
+        startDestination = BrownPaperRoutes.listRoute(ArticleListSource.Inbox),
+        modifier = Modifier,
+        enterTransition = { slideInHorizontally(animationSpec = tween(300), initialOffsetX = { it }) + fadeIn(animationSpec = tween(300)) },
+        exitTransition = { slideOutHorizontally(animationSpec = tween(300), targetOffsetX = { -it / 2 }) + fadeOut(animationSpec = tween(300)) },
+        popEnterTransition = { slideInHorizontally(animationSpec = tween(300), initialOffsetX = { -it / 2 }) + fadeIn(animationSpec = tween(300)) },
+        popExitTransition = { slideOutHorizontally(animationSpec = tween(300), targetOffsetX = { it }) + fadeOut(animationSpec = tween(300)) },
+    ) {
+        composable(
+            route = BrownPaperRoutes.listTemplate,
+            arguments = listOf(
+                navArgument("source") { type = NavType.StringType },
+                navArgument("sourceId") {
+                    type = NavType.LongType
+                    defaultValue = -1L
+                },
+            ),
+        ) { entry ->
+            val viewModel: ArticleListViewModel = hiltViewModel(entry)
+            val routeSource = entry.arguments?.getString("source") ?: ArticleListSource.Inbox.routeValue
+            val routeSourceId = entry.arguments?.getLong("sourceId") ?: -1L
+
+            LaunchedEffect(routeSource, routeSourceId) {
+                viewModel.updateSource(routeSource, routeSourceId)
+            }
+
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+            ArticleListScreen(
+                uiState = uiState,
+                isSavingArticle = shellUiState.isSavingArticle,
+                snackbarHostState = snackbarHostState,
+                showNavigationIcon = !useTabletLayout,
+                useTabletLayout = useTabletLayout,
+                onOpenDrawer = onOpenDrawer,
+                onSearchQueryChange = viewModel::updateSearchQuery,
+                onArticleSelected = { articleId ->
+                    navController.navigate(BrownPaperRoutes.readerRoute(articleId))
+                },
+                onAddArticle = onShowAddDialog,
+                onToggleFavorite = viewModel::toggleFavorite,
+                onToggleArchive = viewModel::toggleArchive,
+                onMarkRead = viewModel::markRead,
+                onDeleteArticle = viewModel::deleteArticle,
+            )
+        }
+
+        composable(
+            route = BrownPaperRoutes.readerTemplate,
+            arguments = listOf(
+                navArgument("articleId") { type = NavType.LongType },
+            ),
+        ) { entry ->
+            val viewModel: ReaderViewModel = hiltViewModel(entry)
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+            ReaderScreen(
+                uiState = uiState,
+                snackbarHostState = snackbarHostState,
+                events = viewModel.events,
+                onBack = { navController.popBackStack() },
+                onToggleLiked = viewModel::toggleLiked,
+                onToggleArchived = viewModel::toggleArchived,
+                onUpdateFontFamily = viewModel::updateFontFamily,
+                onUpdateFontSize = viewModel::updateFontSize,
+                onUpdateFontWeight = viewModel::updateFontWeight,
+                onUpdateTheme = viewModel::updateTheme,
+                onUpdateContentWidth = viewModel::updateContentWidth,
+                onSaveTags = viewModel::saveTags,
+                onMoveToFolder = viewModel::moveToFolder,
+                onSearchInArticle = viewModel::setSearchQuery,
+                onUpdateVideoPosition = viewModel::updateVideoPosition,
+                onDeleteArticle = viewModel::deleteArticle,
+                onCreateAnnotation = viewModel::createAnnotation,
+                onUpdateAnnotation = viewModel::updateAnnotation,
+                onDeleteAnnotation = viewModel::deleteAnnotation,
+                onSyncAnnotations = viewModel::syncAnnotations,
+                onDeleted = { navController.popBackStack() },
+            )
+        }
+
+        composable(route = BrownPaperRoutes.settings) {
+            com.blackpirateapps.brownpaper.ui.settings.SettingsScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
+    }
+}
+
+private val TabletBreakpoint = 600.dp
+private val PermanentDrawerWidth = 320.dp

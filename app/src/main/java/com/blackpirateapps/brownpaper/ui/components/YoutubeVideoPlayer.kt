@@ -19,7 +19,7 @@ fun YoutubeVideoPlayer(
     videoId: String,
     startSeconds: Float,
     onPositionChanged: (Float) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier.fillMaxSize()
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     var currentPosition by remember { mutableFloatStateOf(startSeconds) }
@@ -51,6 +51,6 @@ fun YoutubeVideoPlayer(
                 lifecycleOwner.lifecycle.addObserver(this)
             }
         },
-        modifier = modifier.fillMaxSize()
+        modifier = modifier
     )
 }

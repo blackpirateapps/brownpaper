@@ -22,9 +22,16 @@ enum class ReaderFontWeight {
     BOLD,
 }
 
+enum class ReaderContentWidth {
+    COMPACT,
+    COMFORTABLE,
+    WIDE,
+}
+
 data class ReaderPreferences(
     val fontFamily: ReaderFontFamily = ReaderFontFamily.SYSTEM,
     val fontSizeSp: Float = 18f,
     val fontWeight: ReaderFontWeight = ReaderFontWeight.REGULAR,
     val theme: ReaderTheme = ReaderTheme.LIGHT,
+    val contentWidth: ReaderContentWidth = ReaderContentWidth.COMFORTABLE,
 )

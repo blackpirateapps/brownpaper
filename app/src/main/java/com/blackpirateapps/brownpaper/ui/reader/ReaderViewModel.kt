@@ -3,6 +3,7 @@ package com.blackpirateapps.brownpaper.ui.reader
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.blackpirateapps.brownpaper.core.model.ReaderContentWidth
 import com.blackpirateapps.brownpaper.core.model.ReaderFontFamily
 import com.blackpirateapps.brownpaper.core.model.ReaderFontWeight
 import com.blackpirateapps.brownpaper.core.model.ReaderPreferences
@@ -145,6 +146,12 @@ class ReaderViewModel @Inject constructor(
     fun updateTheme(theme: ReaderTheme) {
         viewModelScope.launch {
             readerPreferencesRepository.updateTheme(theme)
+        }
+    }
+
+    fun updateContentWidth(contentWidth: ReaderContentWidth) {
+        viewModelScope.launch {
+            readerPreferencesRepository.updateContentWidth(contentWidth)
         }
     }
 

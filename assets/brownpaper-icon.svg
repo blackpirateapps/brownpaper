@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="BrownPaper app icon">
+  <rect width="512" height="512" rx="112" fill="#2f2a25"/>
+  <path d="M152 76h180l64 70v290H152z" fill="#d2a65f"/>
+  <path d="M332 76v72h64z" fill="#f0cf91"/>
+  <path d="M190 156h146v22H190zM190 214h168v22H190zM190 272h132v22H190z" fill="#5f4225"/>
+  <path d="M184 76h116l-116 360h-32V76z" fill="#f2d396" opacity=".34"/>
+  <path d="M284 314l38-22 38 22v122l-38-24-38 24z" fill="#7b1f28"/>
+</svg>
