@@ -39,6 +39,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import coil3.compose.AsyncImage
 import com.blackpirateapps.brownpaper.core.util.highlightMatches
 import com.blackpirateapps.brownpaper.core.util.toReadableArticleDate
@@ -76,6 +78,7 @@ fun ArticleCard(
     } else {
         MaterialTheme.colorScheme.onSurfaceVariant
     }
+    var hideHeroImage by remember(article.heroImageUrl) { mutableStateOf(false) }
 
     ElevatedCard(
         modifier = modifier
@@ -105,7 +108,7 @@ fun ArticleCard(
         Column(
             modifier = Modifier.fillMaxWidth(),
         ) {
-            if (!article.heroImageUrl.isNullOrBlank()) {
+            if (!article.heroImageUrl.isNullOrBlank() && !hideHeroImage) {
                 Box {
                     AsyncImage(
                         model = article.heroImageUrl,
@@ -115,6 +118,7 @@ fun ArticleCard(
                             .height(180.dp)
                             .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)),
                         contentScale = ContentScale.Crop,
+                        onError = { hideHeroImage = true },
                     )
                     if (article.isVideo) {
                         Box(

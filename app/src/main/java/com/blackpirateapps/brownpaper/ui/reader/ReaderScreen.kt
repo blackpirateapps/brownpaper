@@ -1,12 +1,22 @@
 package com.blackpirateapps.brownpaper.ui.reader
 
 import android.content.Intent
+import android.content.Context
+import android.graphics.Typeface
 import android.net.Uri
+import android.os.Build
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.BackgroundColorSpan
+import android.view.ActionMode
+import android.view.Menu
+import android.view.MenuItem
+import android.view.MotionEvent
+import android.widget.TextView
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
@@ -79,10 +89,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -90,8 +98,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Dp
+import androidx.core.content.res.ResourcesCompat
 import coil3.compose.AsyncImage
 import com.blackpirateapps.brownpaper.R
 import com.blackpirateapps.brownpaper.core.model.ReaderContentWidth
@@ -537,7 +545,7 @@ private fun ReaderContent(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     if (!article.heroImageUrl.isNullOrBlank()) {
-                        AsyncImage(
+                        LoadableReaderImage(
                             model = article.heroImageUrl,
                             contentDescription = article.title,
                             modifier = Modifier
@@ -581,7 +589,7 @@ private fun ReaderContent(
             ) {
                 if (paragraph.startsWith("![img](") && paragraph.endsWith(")")) {
                     val url = paragraph.substringAfter("![img](").substringBeforeLast(")")
-                    AsyncImage(
+                    LoadableReaderImage(
                         model = url,
                         contentDescription = null,
                         modifier = Modifier
@@ -591,7 +599,7 @@ private fun ReaderContent(
                         contentScale = androidx.compose.ui.layout.ContentScale.FillWidth,
                     )
                 } else {
-                    AnnotatableParagraph(
+                    SelectableParagraph(
                         paragraph = paragraph,
                         paragraphIndex = paragraphIndex,
                         searchQuery = searchQuery,
@@ -611,7 +619,27 @@ private fun ReaderContent(
 }
 
 @Composable
-private fun AnnotatableParagraph(
+private fun LoadableReaderImage(
+    model: String,
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    contentScale: androidx.compose.ui.layout.ContentScale = androidx.compose.ui.layout.ContentScale.Crop,
+) {
+    var hideImage by remember(model) { mutableStateOf(false) }
+
+    if (!hideImage) {
+        AsyncImage(
+            model = model,
+            contentDescription = contentDescription,
+            modifier = modifier,
+            contentScale = contentScale,
+            onError = { hideImage = true },
+        )
+    }
+}
+
+@Composable
+private fun SelectableParagraph(
     paragraph: String,
     paragraphIndex: Int,
     searchQuery: String,
@@ -622,131 +650,85 @@ private fun AnnotatableParagraph(
     onCreateAnnotationDraft: (AnnotationDraftState) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
-    var selection by remember { mutableStateOf<ParagraphSelection?>(null) }
+    val context = LocalContext.current
     val paragraphAnnotations = remember(annotations, paragraphIndex) {
         annotations.filter { annotation ->
             paragraphIndex in annotation.anchor.startParagraphIndex..annotation.anchor.endParagraphIndex
         }
     }
-    val annotatedText = remember(paragraph, paragraphIndex, searchQuery, colors, paragraphAnnotations, selection) {
-        paragraph.toAnnotatedParagraph(
-            paragraphIndex = paragraphIndex,
-            searchQuery = searchQuery,
-            colors = colors,
-            annotations = paragraphAnnotations,
-            selection = selection,
-        )
+    val textColor = colors.content.toArgb()
+    val typeface = remember(context, preferences.fontFamily, preferences.fontWeight) {
+        preferences.asAndroidTypeface(context)
     }
 
-    Text(
-        text = annotatedText,
-        style = TextStyle(
-            fontFamily = preferences.asFontFamily(),
-            fontWeight = preferences.asFontWeight(),
-            fontSize = MaterialTheme.typography.bodyLarge.fontSize * (preferences.fontSizeSp / 18f),
-            lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * (preferences.fontSizeSp / 18f),
-        ),
-        color = colors.content,
-        onTextLayout = { layoutResult = it },
+    AndroidView(
         modifier = modifier
-            .pointerInput(annotatedText, paragraphAnnotations) {
-                detectTapGestures { offset ->
-                    val position = layoutResult?.getOffsetForPosition(offset)
-                    if (position != null) {
-                        val annotationId = annotatedText
-                            .getStringAnnotations(AnnotationTag, position, position)
-                            .firstOrNull()
-                            ?.item
-                            ?.toLongOrNull()
-                        val annotation = paragraphAnnotations.firstOrNull { it.id == annotationId }
-                        if (annotation != null) {
-                            onAnnotationSelected(annotation)
+            .padding(vertical = 1.dp),
+        factory = { viewContext ->
+            TextView(viewContext).apply {
+                setTextIsSelectable(true)
+                includeFontPadding = true
+                setLineSpacing(0f, 1.28f)
+            }
+        },
+        update = { textView ->
+            textView.text = paragraph.toReaderSpannable(
+                paragraphIndex = paragraphIndex,
+                searchQuery = searchQuery,
+                colors = colors,
+                annotations = paragraphAnnotations,
+            )
+            textView.setTextColor(textColor)
+            textView.textSize = preferences.fontSizeSp
+            textView.typeface = typeface
+            textView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            textView.customSelectionActionModeCallback = highlightActionModeCallback(
+                textView = textView,
+                paragraph = paragraph,
+                paragraphIndex = paragraphIndex,
+                onCreateAnnotationDraft = onCreateAnnotationDraft,
+            )
+            textView.setOnTouchListener { view, event ->
+                if (event.action == MotionEvent.ACTION_UP) {
+                    val touchX = event.x
+                    val touchY = event.y
+                    view.post {
+                        if (textView.selectionStart == textView.selectionEnd) {
+                            val offset = textView.offsetForTouch(touchX, touchY)
+                            val annotation = paragraphAnnotations.firstOrNull { annotation ->
+                                val range = annotation.anchor.rangeForParagraph(paragraphIndex, paragraph.length)
+                                range != null && offset in range.first until range.last
+                            }
+                            if (annotation != null) {
+                                onAnnotationSelected(annotation)
+                            }
                         }
                     }
                 }
+                false
             }
-            .pointerInput(paragraph, paragraphIndex) {
-                detectDragGesturesAfterLongPress(
-                    onDragStart = { offset ->
-                        layoutResult?.getOffsetForPosition(offset)?.let { position ->
-                            selection = ParagraphSelection(position, position)
-                        }
-                    },
-                    onDrag = { change, _ ->
-                        val current = selection
-                        val position = layoutResult?.getOffsetForPosition(change.position)
-                        if (current != null && position != null) {
-                            selection = current.copy(endOffset = position)
-                        }
-                        change.consume()
-                    },
-                    onDragEnd = {
-                        val current = selection?.normalized()
-                        selection = null
-                        if (current != null && current.startOffset != current.endOffset) {
-                            val startOffset = current.startOffset.coerceIn(0, paragraph.length)
-                            val endOffset = current.endOffset.coerceIn(0, paragraph.length)
-                            val quote = paragraph.substring(startOffset, endOffset).trim()
-                            if (quote.isNotBlank()) {
-                                val anchor = AnnotationAnchor(
-                                    startParagraphIndex = paragraphIndex,
-                                    endParagraphIndex = paragraphIndex,
-                                    startCharOffset = startOffset,
-                                    endCharOffset = endOffset,
-                                    prefixText = paragraph.substring(0, startOffset).takeLast(32),
-                                    suffixText = paragraph.substring(endOffset).take(32),
-                                )
-                                onCreateAnnotationDraft(
-                                    AnnotationDraftState(
-                                        anchor = anchor,
-                                        quote = quote,
-                                        noteText = "",
-                                        color = AnnotationColor.Yellow,
-                                    ),
-                                )
-                            }
-                        }
-                    },
-                    onDragCancel = { selection = null },
-                )
-            },
+        },
     )
 }
 
-private fun String.toAnnotatedParagraph(
+private fun String.toReaderSpannable(
     paragraphIndex: Int,
     searchQuery: String,
     colors: ReaderColors,
     annotations: List<ArticleAnnotation>,
-    selection: ParagraphSelection?,
-): AnnotatedString {
-    val builder = AnnotatedString.Builder(this)
+): SpannableString {
+    val spannable = SpannableString(this)
 
     annotations.forEach { annotation ->
         val range = annotation.anchor.rangeForParagraph(paragraphIndex, length) ?: return@forEach
         val annotationColor = annotation.color.toComposeColor()
-        builder.addStyle(
-            style = SpanStyle(
-                background = annotationColor.copy(alpha = if (annotation.noteText.isBlank()) 0.34f else 0.46f),
-                color = colors.content,
+        spannable.setSpan(
+            BackgroundColorSpan(
+                annotationColor.copy(alpha = if (annotation.noteText.isBlank()) 0.34f else 0.46f).toArgb(),
             ),
-            start = range.first,
-            end = range.last,
-        )
-        builder.addStringAnnotation(
-            tag = AnnotationTag,
-            annotation = annotation.id.toString(),
-            start = range.first,
-            end = range.last,
-        )
-    }
-
-    selection?.normalized()?.takeIf { it.startOffset != it.endOffset }?.let { selected ->
-        builder.addStyle(
-            style = SpanStyle(background = colors.selection),
-            start = selected.startOffset.coerceIn(0, length),
-            end = selected.endOffset.coerceIn(0, length),
+            range.first,
+            range.last,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
         )
     }
 
@@ -755,16 +737,71 @@ private fun String.toAnnotatedParagraph(
         var start = indexOf(query, ignoreCase = true)
         while (start >= 0) {
             val end = start + query.length
-            builder.addStyle(
-                style = SpanStyle(background = colors.highlight),
-                start = start,
-                end = end,
+            spannable.setSpan(
+                BackgroundColorSpan(colors.highlight.toArgb()),
+                start,
+                end,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
             )
             start = indexOf(query, startIndex = end, ignoreCase = true)
         }
     }
 
-    return builder.toAnnotatedString()
+    return spannable
+}
+
+private fun highlightActionModeCallback(
+    textView: TextView,
+    paragraph: String,
+    paragraphIndex: Int,
+    onCreateAnnotationDraft: (AnnotationDraftState) -> Unit,
+): ActionMode.Callback = object : ActionMode.Callback {
+    override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
+        menu.add(0, HighlightMenuItemId, 0, "Highlight")
+            .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+        return true
+    }
+
+    override fun onPrepareActionMode(mode: ActionMode, menu: Menu): Boolean = false
+
+    override fun onActionItemClicked(mode: ActionMode, item: MenuItem): Boolean {
+        if (item.itemId != HighlightMenuItemId) {
+            return false
+        }
+
+        val startOffset = textView.selectionStart.coerceAtMost(textView.selectionEnd).coerceIn(0, paragraph.length)
+        val endOffset = textView.selectionStart.coerceAtLeast(textView.selectionEnd).coerceIn(0, paragraph.length)
+        val quote = paragraph.substring(startOffset, endOffset).trim()
+        if (quote.isNotBlank()) {
+            onCreateAnnotationDraft(
+                AnnotationDraftState(
+                    anchor = AnnotationAnchor(
+                        startParagraphIndex = paragraphIndex,
+                        endParagraphIndex = paragraphIndex,
+                        startCharOffset = startOffset,
+                        endCharOffset = endOffset,
+                        prefixText = paragraph.substring(0, startOffset).takeLast(32),
+                        suffixText = paragraph.substring(endOffset).take(32),
+                    ),
+                    quote = quote,
+                    noteText = "",
+                    color = AnnotationColor.Yellow,
+                ),
+            )
+        }
+        mode.finish()
+        return true
+    }
+
+    override fun onDestroyActionMode(mode: ActionMode) = Unit
+}
+
+private fun TextView.offsetForTouch(xPosition: Float, yPosition: Float): Int {
+    val textLayout = layout ?: return -1
+    val x = xPosition.toInt() - totalPaddingLeft + scrollX
+    val y = yPosition.toInt() - totalPaddingTop + scrollY
+    val line = textLayout.getLineForVertical(y.coerceAtLeast(0))
+    return textLayout.getOffsetForHorizontal(line, x.toFloat()).coerceIn(0, text.length)
 }
 
 private fun AnnotationAnchor.rangeForParagraph(paragraphIndex: Int, paragraphLength: Int): IntRange? {
@@ -779,17 +816,6 @@ private fun AnnotationAnchor.rangeForParagraph(paragraphIndex: Int, paragraphLen
         return null
     }
     return safeStart.coerceAtMost(safeEnd)..safeStart.coerceAtLeast(safeEnd)
-}
-
-private data class ParagraphSelection(
-    val startOffset: Int,
-    val endOffset: Int,
-) {
-    fun normalized(): ParagraphSelection = if (startOffset <= endOffset) {
-        this
-    } else {
-        ParagraphSelection(startOffset = endOffset, endOffset = startOffset)
-    }
 }
 
 data class AnnotationDraftState(
@@ -1296,6 +1322,30 @@ private fun ReaderPreferences.asFontFamily(): FontFamily = when (fontFamily) {
     )
 }
 
+private fun ReaderPreferences.asAndroidTypeface(context: Context): Typeface {
+    val base = when (fontFamily) {
+        ReaderFontFamily.SYSTEM -> Typeface.DEFAULT
+        ReaderFontFamily.SERIF -> Typeface.SERIF
+        ReaderFontFamily.MONO -> Typeface.MONOSPACE
+        ReaderFontFamily.MERRIWEATHER -> ResourcesCompat.getFont(context, R.font.merriweather) ?: Typeface.DEFAULT
+        ReaderFontFamily.LORA -> ResourcesCompat.getFont(context, R.font.lora) ?: Typeface.DEFAULT
+        ReaderFontFamily.FIRA_SANS -> ResourcesCompat.getFont(context, R.font.firasans) ?: Typeface.DEFAULT
+        ReaderFontFamily.INTER -> ResourcesCompat.getFont(context, R.font.inter) ?: Typeface.DEFAULT
+    }
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        Typeface.create(base, androidFontWeight, false)
+    } else {
+        Typeface.create(base, if (fontWeight == ReaderFontWeight.BOLD) Typeface.BOLD else Typeface.NORMAL)
+    }
+}
+
+private val ReaderPreferences.androidFontWeight: Int
+    get() = when (fontWeight) {
+        ReaderFontWeight.LIGHT -> 300
+        ReaderFontWeight.REGULAR -> 400
+        ReaderFontWeight.BOLD -> 700
+    }
+
 @Composable
 private fun FontWeightDropdown(
     selected: ReaderFontWeight,
@@ -1493,4 +1543,4 @@ private fun String.toDisplayDomain(): String {
 
 private const val WordsPerMinute = 200
 
-private const val AnnotationTag = "brownpaper-annotation"
+private const val HighlightMenuItemId = 0x425048

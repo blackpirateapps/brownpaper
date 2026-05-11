@@ -94,8 +94,8 @@ class WallabagApiClientTest {
         val request = transport.requests.single()
         assertEquals("POST", request.method)
         assertEquals("https://app.wallabag.it/api/annotations/7", request.url)
-        assertTrue(request.jsonBody.orEmpty().contains("\"quote\""))
-        assertTrue(request.jsonBody.orEmpty().contains("\"text\""))
+        assertTrue(request.jsonBody.orEmpty().contains(""""quote":"saved text""""))
+        assertTrue(request.jsonBody.orEmpty().contains(""""text":"note""""))
         assertEquals("42", annotation.id.toString())
     }
 

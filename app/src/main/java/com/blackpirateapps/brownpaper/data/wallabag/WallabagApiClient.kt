@@ -316,8 +316,8 @@ private fun LocalWallabagAnnotation.asWallabagAnnotationJson(): String {
     val body = JsonObject(
         mapOf(
             "ranges" to ranges,
-            "quote" to JsonArray(listOf(JsonPrimitive(quote))),
-            "text" to JsonArray(listOf(JsonPrimitive(text))),
+            "quote" to JsonPrimitive(quote),
+            "text" to JsonPrimitive(text),
         ),
     )
     return body.toString()
