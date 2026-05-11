@@ -36,6 +36,7 @@ BrownPaper is an offline-first Android "read later" app built in Kotlin with Jet
 - **Secret storage:** Wallabag session JSON is encrypted with an Android Keystore AES-GCM key before being stored in a dedicated DataStore file.
 - **App identity:** Android namespace and release applicationId are `com.blackpirateapps.brownpaper`. Debug builds still use the existing `.debug` suffix. Current app version is `1.1.0` with `versionCode = 2`.
 - **Launcher icon:** The source SVG lives at `assets/brownpaper-icon.svg`. Android uses adaptive launcher icon resources in `app/src/main/res/mipmap-anydpi-v26/` with vector foreground artwork in `app/src/main/res/drawable/ic_launcher_foreground.xml`.
+- **Release signing:** `.github/workflows/build-release.yml` decodes `CI_RELEASE_KEYSTORE_BASE64` into a temporary keystore, verifies it with `keytool` using `CI_RELEASE_STORE_PASSWORD` and `CI_RELEASE_KEY_ALIAS`, then builds the release APK with the existing Gradle signing env vars. Required repository secrets are `CI_RELEASE_KEYSTORE_BASE64`, `CI_RELEASE_STORE_PASSWORD`, `CI_RELEASE_KEY_ALIAS`, and `CI_RELEASE_KEY_PASSWORD`.
 
 ## Verification status
 - Unit tests exist for URL normalization, FTS query formatting, wallabag host normalization, wallabag API request construction/token parsing, and wallabag content mapping.
@@ -43,9 +44,9 @@ BrownPaper is an offline-first Android "read later" app built in Kotlin with Jet
 - Verification was not run after the latest annotation implementation because the user explicitly requested skipping verification.
 - Custom fonts are present as real TTF files in the resource directory.
 - Verification was not run after the tablet optimization, reader width, launcher icon, and version bump because the user explicitly requested implementation without verification.
+- Verification was not run after the release signing workflow update.
 
 ## Known follow-up items
 - Add a Gradle wrapper so future agents can reliably run `./gradlew test`.
 - Do a device/emulator pass for wallabag login and first sync against a real wallabag instance.
 - Add instrumentation and Compose UI tests.
-- Add release signing configuration.

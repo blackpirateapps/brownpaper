@@ -52,6 +52,42 @@ jobs:
             echo "CI_RELEASE_KEY_PASSWORD=$KEY_PASSWORD"
           } >> "$GITHUB_ENV"
 
+      - name: Decode release keystore from secrets
+        env:
+          CI_RELEASE_KEYSTORE_BASE64: ${{ secrets.CI_RELEASE_KEYSTORE_BASE64 }}
+          CI_RELEASE_STORE_PASSWORD: ${{ secrets.CI_RELEASE_STORE_PASSWORD }}
+          CI_RELEASE_KEY_ALIAS: ${{ secrets.CI_RELEASE_KEY_ALIAS }}
+          CI_RELEASE_KEY_PASSWORD: ${{ secrets.CI_RELEASE_KEY_PASSWORD }}
+        run: |
+          KEYSTORE_PATH="$RUNNER_TEMP/brownpaper-release-secret.jks"
+
+          if [ -z "$CI_RELEASE_KEYSTORE_BASE64" ] ||
+             [ -z "$CI_RELEASE_STORE_PASSWORD" ] ||
+             [ -z "$CI_RELEASE_KEY_ALIAS" ] ||
+             [ -z "$CI_RELEASE_KEY_PASSWORD" ]; then
+            echo "::error::Missing release signing secrets. Add CI_RELEASE_KEYSTORE_BASE64, CI_RELEASE_STORE_PASSWORD, CI_RELEASE_KEY_ALIAS, and CI_RELEASE_KEY_PASSWORD."
+            exit 1
+          fi
+
+          printf '%s' "$CI_RELEASE_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+          chmod 600 "$KEYSTORE_PATH"
+
+          {
+            echo "CI_RELEASE_KEYSTORE_PATH=$KEYSTORE_PATH"
+            echo "CI_RELEASE_STORE_PASSWORD=$CI_RELEASE_STORE_PASSWORD"
+            echo "CI_RELEASE_KEY_ALIAS=$CI_RELEASE_KEY_ALIAS"
+            echo "CI_RELEASE_KEY_PASSWORD=$CI_RELEASE_KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+
+      - name: Verify release keystore
+        run: |
+          test -s "$CI_RELEASE_KEYSTORE_PATH"
+          keytool -list \
+            -keystore "$CI_RELEASE_KEYSTORE_PATH" \
+            -storepass "$CI_RELEASE_STORE_PASSWORD" \
+            -alias "$CI_RELEASE_KEY_ALIAS" \
+            >/dev/null
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
