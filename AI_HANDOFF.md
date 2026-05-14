@@ -36,6 +36,7 @@ BrownPaper is an offline-first Android "read later" app built in Kotlin with Jet
 - **Secret storage:** Wallabag session JSON is encrypted with an Android Keystore AES-GCM key before being stored in a dedicated DataStore file.
 - **App identity:** Android namespace and release applicationId are `com.blackpirateapps.brownpaper`. Debug builds still use the existing `.debug` suffix. Current app version is `1.1.0` with `versionCode = 2`.
 - **Launcher icon:** The source SVG lives at `assets/brownpaper-icon.svg`. Android uses adaptive launcher icon resources in `app/src/main/res/mipmap-anydpi-v26/` with vector foreground artwork in `app/src/main/res/drawable/ic_launcher_foreground.xml`.
+- **License and store metadata:** The repo is licensed under Apache-2.0 via `LICENSE`. IzzyOnDroid/F-Droid Fastlane metadata lives under `fastlane/metadata/android/en-US/`; phone screenshots should be added to `fastlane/metadata/android/en-US/images/phoneScreenshots/`.
 - **Release signing:** `.github/workflows/build-release.yml` decodes `CI_RELEASE_KEYSTORE_BASE64` into a temporary keystore, verifies it with `keytool` using `CI_RELEASE_STORE_PASSWORD` and `CI_RELEASE_KEY_ALIAS`, then builds the release APK with the existing Gradle signing env vars. Required repository secrets are `CI_RELEASE_KEYSTORE_BASE64`, `CI_RELEASE_STORE_PASSWORD`, `CI_RELEASE_KEY_ALIAS`, and `CI_RELEASE_KEY_PASSWORD`.
 
 ## Verification status

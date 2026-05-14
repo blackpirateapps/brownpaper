@@ -1,0 +1,2 @@
+BrownPaper 1.1.0
+- Adds offline article saving, a native reader, annotations, reader controls, tablet layouts, and optional wallabag sync.
